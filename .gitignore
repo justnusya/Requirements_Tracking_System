@@ -1,0 +1,30 @@
+# Специфічні файли для .NET (папки з результатами компіляції)
+**/[Bb]in/
+**/[Oo]bj/
+
+# Файли конфігурації з конфіденційними даними
+Backend/appsettings.Development.json
+Backend/appsettings.json
+
+# Файли Visual Studio та VS Code
+.vs/
+.vscode/
+*.user
+*.userosscache
+*.sln.docstates
+
+# Тимчасові файли Rider та інших IDE
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# Системні файли
+.DS_Store
+Thumbs.db
+
+# Файли міграцій
+Backend/Migrations/ 
+
+# HTTP файли з тестами запитів
+*.http
