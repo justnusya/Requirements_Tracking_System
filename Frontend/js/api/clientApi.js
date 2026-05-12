@@ -1,9 +1,9 @@
 const BASE_URL = 'http://localhost:5156/api';
 
-export const projectApi = {
+export const clientApi = {
     async getAll() {
         try {
-            const response = await fetch(`${BASE_URL}/Projects`);
+            const response = await fetch(`${BASE_URL}/Clients`);
             if (!response.ok) throw new Error('Помилка завантаження даних');
             return await response.json();
         } catch (error) {
@@ -14,8 +14,8 @@ export const projectApi = {
 
     async getById(id) {
         try {
-            const response = await fetch(`${BASE_URL}/Projects/${id}`);
-            if (!response.ok) throw new Error('Проєкт не знайдено');
+            const response = await fetch(`${BASE_URL}/Clients/${id}`);
+            if (!response.ok) throw new Error('Клієнт не знайдено');
             return await response.json();
         } catch (error) {
             console.error('API Error (getById):', error);
@@ -23,12 +23,12 @@ export const projectApi = {
         }
     },
 
-    async create(projectData) {
+    async create(clientData) {
         try {
-            const response = await fetch(`${BASE_URL}/Projects`, {
+            const response = await fetch(`${BASE_URL}/Clients`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(projectData)
+                body: JSON.stringify(clientData)
             });
 
             if (!response.ok) {
@@ -50,7 +50,7 @@ export const projectApi = {
 
     async update(id, data) {
         try {
-            const response = await fetch(`${BASE_URL}/Projects/${id}`, {
+            const response = await fetch(`${BASE_URL}/Clients/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ ...data, Id: id }) 
@@ -67,8 +67,9 @@ export const projectApi = {
             throw error;
         }
     },
+    
     async delete(id) {
-        const response = await fetch(`${BASE_URL}/Projects/${id}`, {
+        const response = await fetch(`${BASE_URL}/Clients/${id}`, {
             method: 'DELETE'
         });
         if (!response.ok) throw new Error('Помилка видалення');

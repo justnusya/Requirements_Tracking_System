@@ -59,10 +59,14 @@ public class ApplicationDbContext : DbContext
                   .OnDelete(DeleteBehavior.Restrict);
         });
 
-        modelBuilder.Entity<Project>((Action<Microsoft.EntityFrameworkCore.Metadata.Builders.EntityTypeBuilder<Project>>)(entity => {
+        modelBuilder.Entity<Project>(entity => 
+{
             entity.ToTable("Projects");
-            entity.HasOne((System.Linq.Expressions.Expression<Func<Project, Client?>>?)(p => p.Client)).WithMany().HasForeignKey(p => p.ClientId);
-        }));
+
+            entity.HasOne(p => p.Client)
+                .WithMany(c => c.Projects) 
+                .HasForeignKey(p => p.ClientId);
+        });
 
         modelBuilder.Entity<User>().ToTable("Users");
         modelBuilder.Entity<Client>().ToTable("Clients");

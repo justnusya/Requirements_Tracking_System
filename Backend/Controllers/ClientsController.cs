@@ -8,45 +8,49 @@ namespace Backend.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class ProjectsController : ControllerBase
+    public class ClientsController : ControllerBase
     {
         private readonly RequirementService _service;
         private readonly ApplicationDbContext _context;
 
-        public ProjectsController(RequirementService service, ApplicationDbContext context)
+        public ClientsController(RequirementService service, ApplicationDbContext context)
         {
             _service = service;
             _context = context;
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Project>>> GetProjects()
+        public async Task<ActionResult<IEnumerable<Client>>> GetClients()
         {
-            return await _context.Projects.Include(p => p.Client).ToListAsync();
+            return await _context.Clients
+                .Include(c => c.Projects)
+                .ToListAsync();
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<Project>> GetProject(int id)
+        public async Task<ActionResult<Client>> GetClient(int id)
         {
-            var project = await _context.Projects.FindAsync(id);
-            if (project == null) return NotFound();
-            return project;
+            var client = await _context.Clients
+                .Include(c => c.Projects)
+                .FirstOrDefaultAsync(c => c.Id == id);
+
+            if (client == null) return NotFound();
+            return client;
         }
 
         [HttpPost]
-        public async Task<ActionResult<Project>> PostProject([FromBody] Project project)
+        public async Task<ActionResult<Client>> PostClient([FromBody] Client client)
         {
-            ModelState.Remove("Requirements"); 
-            ModelState.Remove("Author");
+            ModelState.Remove("Projects");
 
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
             try
             {
-                _context.Projects.Add(project);
+                _context.Clients.Add(client);
                 await _context.SaveChangesAsync();
                 
-                return CreatedAtAction(nameof(GetProject), new { id = project.Id }, project);
+                return CreatedAtAction(nameof(GetClient), new { id = client.Id }, client);
             }
             catch (Exception ex)
             {
@@ -56,39 +60,38 @@ namespace Backend.Controllers
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutProject(int id, [FromBody] Project project)
+        public async Task<IActionResult> PutClient(int id, [FromBody] Client client)
         {
-            if (id != project.Id) return BadRequest("ID mismatch");
+            if (id != client.Id) return BadRequest("ID mismatch");
 
-            ModelState.Remove("Client");
             ModelState.Remove("Requirements");
 
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
-            var exists = await _context.Projects.AnyAsync(p => p.Id == id);
+            var exists = await _context.Clients.AnyAsync(c => c.Id == id);
             if (!exists) return NotFound();
 
             try
             {
-                _context.Projects.Update(project);
+                _context.Clients.Update(client);
                 await _context.SaveChangesAsync();
                 return NoContent();
             }
             catch (Exception ex)
             {
                 var innerError = ex.InnerException?.Message ?? ex.Message;
-                Console.WriteLine($"[Error] PutProject: {innerError}");
+                Console.WriteLine($"[Error] PutClient: {innerError}");
                 return StatusCode(500, innerError);
             }
         }
 
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteProject(int id)
+        public async Task<IActionResult> DeleteClient(int id)
         {
-            var project = await _context.Projects.FindAsync(id);
-            if (project == null) return NotFound();
+            var client = await _context.Clients.FindAsync(id);
+            if (client == null) return NotFound();
 
-            _context.Projects.Remove(project);
+            _context.Clients.Remove(client);
             await _context.SaveChangesAsync();
             return NoContent();
         }

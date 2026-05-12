@@ -3,98 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <title>Вимоги - Requirements System</title>
+    <link rel="stylesheet" href="../css/style.css">
     <style>
-        :root{ --side-accent-width: 60px; }
-        body { font-family: 'Segoe UI', sans-serif; margin: 0; background: #f4f7f6; width: 100%; border-collapse: collapse; table-layout: fixed}
-        header { 
-            background: none; color: black; padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center; }
-        .container { padding: 1.5rem; }
-        table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
-        th { background: #f8f9fa; }
-        .user-info { font-weight: bold; }
-        .logout-btn { background: #ff4d4d; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 4px; }
-        .side-accent {
-        position: fixed;
-        left: 0;
-        top: 0;
-        bottom: 0;
-        width: var(--side-accent-width); 
-        background: #7300ff;
-        z-index: 1000;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding-top: 15px;
-        box-shadow: 2px 0 5px rgba(0,0,0,0.1);
-        }
-        .side-logo {
-        width: 35px;
-        height: auto;
-        filter: brightness(0) invert(1);
-        margin-bottom: 30px;
-        }
-        .side-icon {
-        width: 30px;
-        height: auto;
-        filter: brightness(0) invert(1);
-        margin-bottom: 2px;
-        }
-        .nav-menu {
-            margin-top: 15vh;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            width: 100%;
-            align-items: center;
-        }
-
-        .nav-item {
-            color: white;
-            text-decoration: none;
-            font-size: 10px; 
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            width: 100%;
-            padding: 10px 0;
-            transition: background 0.3s;
-            opacity: 0.8;
-        }
-
-        .nav-item:hover {
-            background: rgba(255, 255, 255, 0.1);
-            opacity: 1;
-        }
-
-        .nav-item i {
-            font-size: 20px;
-            margin-bottom: 5px;
-        }
-
-        .nav-item.active {
-            background: rgba(255, 255, 255, 0.2);
-            border-left: 3px solid white;
-            opacity: 1;
-        }
-        header, .container, div[style*="flex-end"] {
-        margin-left: var(--side-accent-width);
-        }
         #dataTable th:nth-child(1) { width: 5%; } 
         #dataTable th:nth-child(2) { width: 20%; }
-        #dataTable th:nth-child(3) { width: 30%; } 
-        #dataTable th:nth-child(4) { width: 10%; } 
-        #dataTable th:nth-child(5) { width: 10%; }
-        #dataTable th:nth-child(6) { width: 10%; } 
+        #dataTable th:nth-child(3) { width: 25%; } 
+        #dataTable th:nth-child(4) { width: 15%; } 
+        #dataTable th:nth-child(5) { width: 12%; }
+        #dataTable th:nth-child(6) { width: 13%; } 
         #dataTable th:nth-child(7) { width: 10%; } 
-        #dataTable th:nth-child(8) { width: 5%; }
-        #dataTable th {
-        background-color: #ececec;
-        color: #a8a8a9;
-        font-weight: bold; 
-        word-break: break-word;
-        vertical-align: top;
-        }
     </style>
 </head>
 <body>
@@ -109,7 +26,6 @@
 
 <div class="side-accent">
     <img src="../images/logo.png" alt="Logo" class="side-logo">
-    
     <div class="nav-menu">
         <a href="lobby.html" class="nav-item">
             <img src="../images/homeIcon.png" alt="Logo" class="side-icon">
@@ -130,7 +46,7 @@
     </div>
 </div>
 
-<div style="display: flex; justify-content: space-between; align-items: center; padding: 2rem 2rem 1rem 2rem; margin-left: var(--side-accent-width);">
+<div style="display: flex; justify-content: space-between; align-items: center; padding: 2rem 2rem 1rem 2rem;">
     <h2 style="margin: 0; font-weight: 500;">Список вимог</h2>
     <button id="openModalBtn" style="background: #7300ff; color: white; border: none; padding: 10px 20px; border-radius: 10px; cursor: pointer; font-weight: bolder;">
         Додати вимогу
@@ -226,7 +142,6 @@
 
             body.innerHTML = requirements.map(req => {
                 const priorityText = req.priorityId === 3 ? "Високий" : req.priorityId === 2 ? "Середній" : "Низький";
-                
                 const statusText = 
                     req.statusId === 1 ? "Нова" : 
                     req.statusId === 2 ? "Заплановано" : 
@@ -236,8 +151,8 @@
                     <tr>
                         <td>${req.id}</td>
                         <td>${req.title}</td>
-                        <td>${req.description}</td>
-                        <td>${req.project ? (req.project.projectName || req.project.name || "Об'єкт є, поля немає") : 'null в обєкті'}</td>
+                        <td>${req.description || '-'}</td>
+                        <td>${req.project ? (req.project.projectName || req.project.name) : 'null в обєкті'}</td>
                         <td>${priorityText}</td>
                         <td>${statusText}</td>
                         <td>
@@ -255,7 +170,6 @@
         try {
             const projects = await projectApi.getAll();
             projectSelect.innerHTML = '<option value="">Оберіть проєкт...</option>';
-            
             projects.forEach(proj => {
                 const option = document.createElement('option');
                 option.value = proj.id;
@@ -270,12 +184,9 @@
     window.openEditModal = async (id) => {
         try {
             const req = await requirementApi.getById(id);
-            
             document.getElementById('reqTitle').value = req.title;
             document.getElementById('reqDescription').value = req.description || '';
-            document.getElementById('reqPriority').value = 
-                req.priorityId === 3 ? "High" : req.priorityId === 2 ? "Medium" : "Low";
-            
+            document.getElementById('reqPriority').value = req.priorityId === 3 ? "High" : req.priorityId === 2 ? "Medium" : "Low";
             document.getElementById('reqStatus').value = req.statusId.toString();
             document.getElementById('reqProject').value = req.projectId;
 
@@ -298,26 +209,17 @@
         modal.style.display = "block";
     };
 
-    closeBtn.onclick = () => {
-        modal.style.display = "none";
-    };
-
-    window.onclick = (event) => {
-        if (event.target == modal) modal.style.display = "none";
-    };
+    closeBtn.onclick = () => { modal.style.display = "none"; };
 
     form.onsubmit = async (e) => {
         e.preventDefault();
-
         const requirementData = {
             Id: editMode ? parseInt(currentEditId) : 0,
             Title: document.getElementById('reqTitle').value,
             Description: document.getElementById('reqDescription').value,
             PriorityId: document.getElementById('reqPriority').value === "High" ? 3 : 
                         document.getElementById('reqPriority').value === "Medium" ? 2 : 1,
-            
             StatusId: parseInt(document.getElementById('reqStatus').value), 
-            
             ProjectId: parseInt(document.getElementById('reqProject').value), 
             AuthorId: parseInt(localStorage.getItem('userId')),
             CreatedAt: editMode ? currentCreatedAt : new Date().toISOString(),
@@ -327,17 +229,13 @@
         try {
             if (editMode) {
                 await requirementApi.update(currentEditId, requirementData);
-                alert("Вимогу оновлено!");
             } else {
                 await requirementApi.create(requirementData);
-                alert("Вимогу успішно додано!");
             }
             modal.style.display = "none";
-            form.reset();
             loadRequirements();
         } catch (err) {
             console.error("Помилка при збереженні:", err);
-            alert("Сталася помилка. Перевірте консоль браузера.");
         }
     };
     loadProjectsToSelect();

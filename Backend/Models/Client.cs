@@ -14,4 +14,5 @@ public partial class Client
     public string Email { get; set; } = null!;
 
     public DateTime CreatedAt { get; set; }
+    public virtual ICollection<Project> Projects { get; set; } = new List<Project>();
 }

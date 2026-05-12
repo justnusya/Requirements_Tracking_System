@@ -3,101 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <title>Проєкти - Requirements System</title>
+    <link rel="stylesheet" href="../css/style.css">
     <style>
-        :root{ --side-accent-width: 60px; }
-        body { font-family: 'Segoe UI', sans-serif; margin: 0; background: #f4f7f6; border-collapse: collapse; table-layout: fixed;}
-        header { 
-            background: none; color: black; padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center; }
-        .container { padding: 1.5rem; }
-        table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
-        th { background: #f8f9fa; }
-        .user-info { font-weight: bold; }
-        .logout-btn { background: #ff4d4d; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 4px; }
-        .side-accent {
-        position: fixed;
-        left: 0;
-        top: 0;
-        bottom: 0;
-        width: var(--side-accent-width); 
-        background: #7300ff;
-        z-index: 1000;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding-top: 15px;
-        box-shadow: 2px 0 5px rgba(0,0,0,0.1);
-        }
-        .side-logo {
-        width: 35px;
-        height: auto;
-        filter: brightness(0) invert(1);
-        margin-bottom: 30px;
-        }
-        .side-icon {
-        width: 30px;
-        height: auto;
-        filter: brightness(0) invert(1);
-        margin-bottom: 2px;
-        }
-        .nav-menu {
-            margin-top: 15vh;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            width: 100%;
-            align-items: center;
-        }
-
-        .nav-item {
-            color: white;
-            text-decoration: none;
-            font-size: 10px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            width: 100%;
-            padding: 10px 0;
-            transition: background 0.3s;
-            opacity: 0.8;
-        }
-
-        .nav-item:hover {
-            background: rgba(255, 255, 255, 0.1);
-            opacity: 1;
-        }
-
-        .nav-item i {
-            font-size: 20px;
-            margin-bottom: 5px;
-        }
-
-        .nav-item.active {
-            background: rgba(255, 255, 255, 0.2);
-            border-left: 3px solid white;
-            opacity: 1;
-        }
-        header, .container, div[style*="flex-end"] {
-        margin-left: var(--side-accent-width);
-        }
-        #dataTable th {
-        background-color: #ececec;
-        color: #a8a8a9;
-        font-weight: bold; 
-        }
         #dataTable th:nth-child(1) { width: 5%; } 
         #dataTable th:nth-child(2) { width: 20%; }
         #dataTable th:nth-child(3) { width: 30%; }
         #dataTable th:nth-child(4) { width: 10%; } 
         #dataTable th:nth-child(5) { width: 10%; }
         #dataTable th:nth-child(6) { width: 5%; }
-        #dataTable th {
-        background-color: #ececec; 
-        color: #a8a8a9;
-        font-weight: bold; 
-        word-break: break-word;
-        vertical-align: top;
-        }
     </style>
 </head>
 <body>
@@ -112,7 +25,6 @@
 
 <div class="side-accent">
     <img src="../images/logo.png" alt="Logo" class="side-logo">
-    
     <div class="nav-menu">
         <a href="lobby.html" class="nav-item">
             <img src="../images/homeIcon.png" alt="Logo" class="side-icon">
@@ -133,7 +45,7 @@
     </div>
 </div>
 
-<div style="display: flex; justify-content: space-between; align-items: center; padding: 2rem 2rem 1rem 2rem; margin-left: var(--side-accent-width);">
+<div style="display: flex; justify-content: space-between; align-items: center; padding: 2rem 2rem 1rem 2rem;">
     <h2 style="margin: 0; font-weight: 500;">Проєкти</h2>
     <button id="openModalBtn" style="background: #7300ff; color: white; border: none; padding: 10px 20px; border-radius: 10px; cursor: pointer; font-weight: bolder;">
         Додати проєкт
@@ -167,8 +79,10 @@
             <label>Опис:</label>
             <textarea id="projDescription" style="width:100%; margin: 10px 0; padding: 5px; box-sizing: border-box;" rows="3"></textarea>
 
-            <label>ID Замовника:</label>
-            <input type="number" id="projClientId" style="width:100%; margin: 10px 0; padding: 5px; box-sizing: border-box;" required>
+            <label>Замовник:</label>
+            <select id="projClientId" style="width:100%; margin: 10px 0; padding: 5px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;" required>
+                <option value="">Завантаження клієнтів...</option>
+            </select>
             
             <label>Бюджет:</label>
             <input type="number" id="projBudget" style="width:100%; margin: 10px 0; padding: 5px; box-sizing: border-box;" required>
@@ -186,6 +100,7 @@
 
 <script type="module">
     import { projectApi } from '../js/api/projectApi.js';
+    import { clientApi } from '../js/api/clientApi.js'; 
     
     let editMode = false;
     let currentEditId = null;
@@ -195,6 +110,8 @@
     const openBtn = document.getElementById('openModalBtn');
     const closeBtn = document.getElementById('closeModalBtn');
     const form = document.getElementById('addProjectForm');
+    
+    const clientSelect = document.getElementById('projClientId');
 
     document.getElementById('currentUserName').innerText = localStorage.getItem('userName') || 'Гість';
 
@@ -202,6 +119,38 @@
         localStorage.clear();
         window.location.href = 'login.html';
     };
+
+    function formatDate(isoString) {
+        if (!isoString) return '-';
+        const date = new Date(isoString);
+        return date.toLocaleDateString('uk-UA', { 
+            day: '2-digit', 
+            month: '2-digit', 
+            year: 'numeric' 
+        });
+    }
+
+    async function loadClientsToSelect() {
+        try {
+            const clients = await clientApi.getAll(); 
+            
+            clientSelect.innerHTML = '<option value="">Оберіть замовника...</option>';
+            
+            clients.forEach(client => {
+                const option = document.createElement('option');
+                option.value = client.id;
+                
+                const fName = client.firstName || client.FirstName || '';
+                const lName = client.lastName || client.LastName || '';
+                option.textContent = `${fName} ${lName}`.trim() || `Клієнт #${client.id}`;
+                
+                clientSelect.appendChild(option);
+            });
+        } catch (err) {
+            console.error("Помилка завантаження клієнтів:", err);
+            clientSelect.innerHTML = '<option value="">Помилка завантаження</option>';
+        }
+    }
 
     async function loadProjects() {
         try {
@@ -213,19 +162,31 @@
                 return;
             }
 
-            body.innerHTML = projects.map(proj => `
-                <tr>
-                    <td>${proj.id}</td>
-                    <td>${proj.projectName}</td>
-                    <td>${proj.description || '-'}</td>
-                    <td>${proj.client ? proj.client.name : 'ID: ' + proj.clientId}</td>
-                    <td>${proj.budget}</td>
-                    <td>${proj.startDate || '-'}</td>
-                    <td>
-                        <button onclick="openEditModal(${proj.id})" style="background:#d4d4d4; border:none; border-radius:4px; cursor:pointer; padding:3px 10px;">•••</button>
-                    </td>
-                </tr>
-            `).join('');
+            body.innerHTML = projects.map(proj => {
+                let clientDisplay = '<span style="color: #999;">Не обрано</span>';
+                
+                if (proj.client) {
+                    const fName = proj.client.firstName || proj.client.FirstName || '';
+                    const lName = proj.client.lastName || proj.client.LastName || '';
+                    clientDisplay = `${fName} ${lName}`.trim() || 'Клієнт без імені';
+                } else if (proj.clientId) {
+                    clientDisplay = `<span style="color: #888;">Не обрано</span>`;
+                }
+
+                return `
+                    <tr>
+                        <td>${proj.id}</td>
+                        <td>${proj.projectName}</td>
+                        <td>${proj.description || '-'}</td>
+                        <td>${clientDisplay}</td>
+                        <td>$${proj.budget}</td>
+                        <td>${formatDate(proj.startDate)}</td>
+                        <td>
+                            <button onclick="showActionMenu(event, ${proj.id})" style="background:#d4d4d4; border:none; border-radius:4px; cursor:pointer; padding:3px 10px;">•••</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
         } catch (err) {
             console.error("Не вдалося завантажити проєкти", err);
         }
@@ -234,7 +195,6 @@
     window.openEditModal = async (id) => {
         try {
             const proj = await projectApi.getById(id);
-            
             document.getElementById('projTitle').value = proj.projectName;
             document.getElementById('projDescription').value = proj.description || '';
             document.getElementById('projClientId').value = proj.clientId;
@@ -265,33 +225,33 @@
     };
 
     form.onsubmit = async (e) => {
-    e.preventDefault();
+        e.preventDefault();
+        const projectData = {
+            ProjectName: document.getElementById('projTitle').value,
+            Description: document.getElementById('projDescription').value,
+            ClientId: parseInt(document.getElementById('projClientId').value),
+            Budget: parseFloat(document.getElementById('projBudget').value),
+            StartDate: document.getElementById('projStartDate').value
+        };
 
-    const projectData = {
-        ProjectName: document.getElementById('projTitle').value,
-        Description: document.getElementById('projDescription').value,
-        ClientId: parseInt(document.getElementById('projClientId').value),
-        Budget: parseFloat(document.getElementById('projBudget').value),
-        StartDate: document.getElementById('projStartDate').value
+        if (editMode) {
+            projectData.Id = currentEditId;
+        }
+
+        try {
+            if (editMode) {
+                await projectApi.update(currentEditId, projectData);
+            } else {
+                await projectApi.create(projectData);
+            }
+            modal.style.display = "none";
+            loadProjects();
+        } catch (err) {
+            console.error("Помилка:", err);
+        }
     };
 
-    if (editMode) {
-        projectData.Id = currentEditId;
-    }
-
-    try {
-        if (editMode) {
-            await projectApi.update(currentEditId, projectData);
-        } else {
-            await projectApi.create(projectData);
-        }
-        modal.style.display = "none";
-        loadProjects();
-    } catch (err) {
-        console.error("Помилка:", err);
-    }
-};
-
+    loadClientsToSelect();
     loadProjects();
 </script>
 </body>
