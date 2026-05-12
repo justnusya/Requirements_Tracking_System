@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Вхід - Requirements Tracking System</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background: #f0f2f5; margin: 0; }
+        .login-card { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 350px; }
+        input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        button { width: 100%; padding: 10px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .error { color: red; font-size: 14px; display: none; }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <h2>Вхід у систему</h2>
+        <input type="text" id="username" placeholder="Логін">
+        <input type="password" id="password" placeholder="Пароль">
+        <p id="error-msg" style="color: red; display: none;" class="error">Невірний логін або пароль</p>
+        <button id="loginBtn">Увійти</button>
+    </div>
+
+<script type="module">
+    import { userApi } from '../js/api/userApi.js';
+
+    window.addEventListener('DOMContentLoaded', () => {
+        const loginBtn = document.getElementById('loginBtn');
+        
+        if (loginBtn) {
+            loginBtn.addEventListener('click', async () => {
+                const username = document.getElementById('username').value;
+                const errorMsg = document.getElementById('error-msg');
+
+                try {
+                    console.log("Спроба входу для:", username);
+                    const users = await userApi.getAll();
+                    const user = users.find(u => u.username === username);
+
+                    if (user) {
+                        localStorage.setItem('userId', user.id);
+                        localStorage.setItem('userName', user.username);
+                        localStorage.setItem('userRole', user.role);
+                        
+                        alert("Вхід успішний!");
+                        window.location.href = 'projects.html';
+                    } else {
+                        errorMsg.style.display = 'block';
+                    }
+                } catch (err) {
+                    console.error("Помилка:", err);
+                    alert("Сервер не відповідає. Перевір Backend!");
+                }
+            });
+        }
+    });
+</script>
+</body>
+</html>

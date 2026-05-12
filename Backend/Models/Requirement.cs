@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace Backend.Models;
 
@@ -24,10 +25,14 @@ public partial class Requirement
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }
+    
+    [JsonIgnore]
+    public virtual User? Author { get; set; }
+    public virtual Project? Project { get; set; }
 
-    public virtual User Author { get; set; } = null!;
+    [JsonIgnore]
+    public virtual RequirementStatus? Status { get; set; }
 
-    public virtual Project Project { get; set; } = null!;
-    public virtual RequirementStatus Status { get; set; } = null!;
-    public virtual RequirementPriority Priority { get; set; } = null!;
+    [JsonIgnore]
+    public virtual RequirementPriority? Priority { get; set; }
 }

@@ -1,9 +1,9 @@
 const BASE_URL = 'http://localhost:5156/api';
 
-export const requirementApi = {
+export const projectApi = {
     async getAll() {
         try {
-            const response = await fetch(`${BASE_URL}/Requirements`);
+            const response = await fetch(`${BASE_URL}/Projects`);
             if (!response.ok) throw new Error('Помилка завантаження даних');
             return await response.json();
         } catch (error) {
@@ -14,8 +14,8 @@ export const requirementApi = {
 
     async getById(id) {
         try {
-            const response = await fetch(`${BASE_URL}/Requirements/${id}`);
-            if (!response.ok) throw new Error('Вимогу не знайдено');
+            const response = await fetch(`${BASE_URL}/Projects/${id}`);
+            if (!response.ok) throw new Error('Проєкт не знайдено');
             return await response.json();
         } catch (error) {
             console.error('API Error (getById):', error);
@@ -23,12 +23,12 @@ export const requirementApi = {
         }
     },
 
-    async create(requirementData) {
+    async create(projectData) {
         try {
-            const response = await fetch(`${BASE_URL}/Requirements`, {
+            const response = await fetch(`${BASE_URL}/Projects`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(requirementData)
+                body: JSON.stringify(projectData)
             });
 
             if (!response.ok) {
@@ -50,7 +50,7 @@ export const requirementApi = {
 
     async update(id, data) {
         try {
-            const response = await fetch(`${BASE_URL}/Requirements/${id}`, {
+            const response = await fetch(`${BASE_URL}/Projects/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ ...data, Id: id }) 
