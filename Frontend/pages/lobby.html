@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Головна - Yuppie</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .welcome-section {
+            padding: 2rem;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            margin-bottom: 2rem;
+        }
+
+        .welcome-text { font-size: 28px; font-weight: 500; color: #333; }
+        .brand-name { color: #7300ff; font-weight: 700; }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white; padding: 1.5rem; border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            display: flex; align-items: center; gap: 1rem;
+            transition: transform 0.2s;
+        }
+
+        .stat-card:hover { transform: translateY(-5px); }
+
+        .stat-icon {
+            background: #f0e6ff; width: 55px; height: 55px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+
+        .stat-icon img {
+            width: 28px; height: auto;
+            filter: invert(18%) sepia(88%) saturate(6248%) hue-rotate(264deg) brightness(91%) contrast(116%);
+            opacity: 0.9;
+        }
+
+        .stat-info h4 { margin: 0; color: #888; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; }
+        .stat-value { font-size: 24px; font-weight: bold; color: #333; }
+
+        .charts-flex-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .chart-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .chart-card h3 { margin-top: 0; font-size: 20px; color: #222; margin-bottom: 15px; font-weight: 600; }
+        .chart-card p { color: #777; margin-top: 0; font-size: 14px; margin-bottom: 20px; }
+
+        .rings-inner-layout {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .ring-legend { list-style: none; padding: 0; margin: 0; }
+        .ring-legend li {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+            font-size: 14px;
+            color: #555;
+        }
+        .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+        
+        .ring-wrapper { position: relative; width: 220px; height: 220px; flex-shrink: 0; }
+        .bar-wrapper { width: 100%; height: 220px; }
+        
+        .chart-center-text {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            pointer-events: none; 
+        }
+        .chart-center-text span { display: block; font-size: 11px; color: #999; text-transform: uppercase; letter-spacing: 0.5px; }
+        .chart-center-text strong { font-size: 24px; color: #7300ff; }
+
+        .history-badge {
+            font-size: 13px;
+            color: #7300ff;
+            background: #f0e6ff;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="logo">Requirements Tracking System</div>
+    <div>
+        Вітаємо, <span id="currentUserNameTop" class="user-info">...</span>!
+        <button class="logout-btn" onclick="logout()">Вийти</button>
+    </div>
+</header>
+
+<div class="side-accent">
+    <img src="../images/logo.png" alt="Logo" class="side-logo">
+    <div class="nav-menu">
+        <a href="lobby.html" class="nav-item active"><img src="../images/homeIcon.png" alt="Logo" class="side-icon"><span>Home</span></a>
+        <a href="clients.html" class="nav-item"><img src="../images/clientIcon.png" alt="Logo" class="side-icon"><span>Clients</span></a>
+        <a href="projects.html" class="nav-item"><img src="../images/folderIcon.png" alt="Logo" class="side-icon"><span>Projects</span></a>
+        <a href="requirements.html" class="nav-item"><img src="../images/requirementIcon.png" alt="Logo" class="side-icon"><span>Reqs</span></a>
+    </div>
+</div>
+
+<div class="container">
+    <div class="welcome-section">
+        <div class="welcome-text">
+            <span id="userNameWelcome">User</span>, welcome to <span class="brand-name">Yuppie</span>!
+        </div>
+        <p style="color: #666; margin-top: 10px;">Сьогодні чудовий день для управління вашими проєктами</p>
+    </div>
+
+    <div class="dashboard-grid">
+        <div class="stat-card">
+            <div class="stat-icon"><img src="../images/clientIcon.png" alt="C"></div>
+            <div class="stat-info"><h4>Замовники</h4><div class="stat-value" id="clientCount">0</div></div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon"><img src="../images/folderIcon.png" alt="P"></div>
+            <div class="stat-info"><h4>Проєкти</h4><div class="stat-value" id="projectCount">0</div></div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon"><img src="../images/requirementIcon.png" alt="R"></div>
+            <div class="stat-info"><h4>Вимоги</h4><div class="stat-value" id="reqCount">0</div></div>
+        </div>
+    </div>
+
+    <div class="charts-flex-container">
+        
+        <div class="chart-card">
+            <div>
+                <h3>Активність поточного місяця</h3>
+            </div>
+            <div class="rings-inner-layout">
+                <ul class="ring-legend">
+                    <li><div class="dot" style="background: #7300ff;"></div> <strong>Вимоги:</strong> <span id="reqPerc">0%</span></li>
+                    <li><div class="dot" style="background: #ff4081;"></div> <strong>Проєкти:</strong> <span id="projPerc">0%</span></li>
+                    <li><div class="dot" style="background: #00bcd4;"></div> <strong>Клієнти:</strong> <span id="clientPerc">0%</span></li>
+                </ul>
+                <div class="ring-wrapper">
+                    <canvas id="appleRingsChart"></canvas>
+                    <div class="chart-center-text">
+                        <span>Ріст</span>
+                        <strong id="avgGrowth">0%</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="chart-card">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                    <h3>Загальна статистика записів</h3>
+                </div>
+                <span class="history-badge" id="historyStartYear">з ...</span>
+            </div>
+            <div class="bar-wrapper">
+                <canvas id="allTimeBarChart"></canvas>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script type="module">
+    import { projectApi } from '../js/api/projectApi.js';
+    import { clientApi } from '../js/api/clientApi.js';
+    import { requirementApi } from '../js/api/requirementApi.js';
+
+    document.getElementById('currentUserNameTop').innerText = localStorage.getItem('userName') || 'Гість';
+    document.getElementById('userNameWelcome').innerText = localStorage.getItem('userName') || 'User';
+
+    window.logout = () => { localStorage.clear(); window.location.href = 'login.html'; };
+
+    function isCurrentMonth(dateString) {
+        if (!dateString) return false;
+        const date = new Date(dateString);
+        const now = new Date();
+        return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
+    }
+
+    function calculateStartYear(allDataArrays) {
+        let earliestDate = new Date();
+        allDataArrays.flat().forEach(item => {
+            const dateStr = item.createdAt || item.CreatedAt || item.startDate || item.StartDate;
+            if (dateStr) {
+                const itemDate = new Date(dateStr);
+                if (itemDate < earliestDate) earliestDate = itemDate;
+            }
+        });
+        return earliestDate.getFullYear();
+    }
+
+    async function loadStats() {
+        try {
+            const [p, c, r] = await Promise.all([projectApi.getAll(), clientApi.getAll(), requirementApi.getAll()]);
+
+            const total = { c: c.length, p: p.length, r: r.length };
+            const month = {
+                c: c.filter(x => isCurrentMonth(x.createdAt || x.CreatedAt)).length,
+                p: p.filter(x => isCurrentMonth(x.startDate || x.StartDate)).length,
+                r: r.filter(x => isCurrentMonth(x.createdAt || x.CreatedAt)).length
+            };
+
+            const startYear = calculateStartYear([p, c, r]);
+            document.getElementById('historyStartYear').innerText = `з ${startYear}`;
+
+            document.getElementById('clientCount').innerText = total.c;
+            document.getElementById('projectCount').innerText = total.p;
+            document.getElementById('reqCount').innerText = total.r;
+
+            const calcPerc = (m, t) => (t > 0 ? Math.round((m / t) * 100) : 0);
+            const perc = {
+                c: calcPerc(month.c, total.c),
+                p: calcPerc(month.p, total.p),
+                r: calcPerc(month.r, total.r)
+            };
+
+            document.getElementById('clientPerc').innerText = perc.c + '%';
+            document.getElementById('projPerc').innerText = perc.p + '%';
+            document.getElementById('reqPerc').innerText = perc.r + '%';
+            document.getElementById('avgGrowth').innerText = Math.round((perc.c + perc.p + perc.r) / 3) + '%';
+
+            initAppleRings(perc, month);
+            initAllTimeBar(total);
+
+        } catch (err) { console.error(err); }
+    }
+
+    function initAppleRings(perc, monthValues) {
+        const ctx = document.getElementById('appleRingsChart').getContext('2d');
+        
+        const chartPercR = perc.r === 0 ? 3.5 : perc.r;
+        const chartPercP = perc.p === 0 ? 3.5 : perc.p;
+        const chartPercC = perc.c === 0 ? 3.5 : perc.c;
+        
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Active', 'Empty'],
+                datasets: [
+                    {
+                        data: [chartPercR, 100 - chartPercR],
+                        backgroundColor: ['#7300ff', '#f0e6ff'],
+                        borderWidth: 0, borderRadius: 20, weight: 0.5,
+                        customCount: monthValues.r, customLabel: 'Нових вимог',
+                        isZero: perc.r === 0 
+                    },
+                    { 
+                        data: [chartPercP, 100 - chartPercP],
+                        backgroundColor: ['#ff4081', '#ffe1ec'],
+                        borderWidth: 0, borderRadius: 20, weight: 0.5,
+                        customCount: monthValues.p, customLabel: 'Нових проєктів',
+                        isZero: perc.p === 0
+                    },
+                    { 
+                        data: [chartPercC, 100 - chartPercC],
+                        backgroundColor: ['#00bcd4', '#e0f7fa'],
+                        borderWidth: 0, borderRadius: 20, weight: 0.5,
+                        customCount: monthValues.c, customLabel: 'Нових клієнтів',
+                        isZero: perc.c === 0
+                    }
+                ]
+            },
+            options: {
+                cutout: '40%',
+                responsive: true,
+                maintainAspectRatio: false,
+                spacing: 6,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        enabled: true,
+                        filter: function(tooltipItem) {
+                            return tooltipItem.dataIndex === 0;
+                        },
+                        callbacks: {
+                            label: function(context) {
+                                const dataset = context.dataset;
+                                const displayPercent = dataset.isZero ? 0 : Math.round(context.raw);
+                                return ` ${dataset.customLabel}: ${dataset.customCount} (${displayPercent}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function initAllTimeBar(totalValues) {
+        const ctx = document.getElementById('allTimeBarChart').getContext('2d');
+        
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Клієнти', 'Проєкти', 'Вимоги'],
+                datasets: [{
+                    data: [totalValues.c, totalValues.p, totalValues.r],
+                    backgroundColor: ['#00bcd4', '#ff4081', '#7300ff'], 
+                    borderRadius: 6,
+                    maxBarThickness: 50,
+                    barPercentage: 0.6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 1, maxTicksLimit: 6, color: '#888' },
+                        grid: { color: '#f0f0f0' }
+                    },
+                    x: {
+                        ticks: { color: '#555', font: { family: 'Segoe UI', size: 13 } },
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+    }
+
+    loadStats();
+</script>
+</body>
+</html>

@@ -28,7 +28,8 @@ public class ApplicationDbContext : DbContext
 
             entity.HasOne(d => d.Project)
                   .WithMany(p => p.Requirements)
-                  .HasForeignKey(d => d.ProjectId);
+                  .HasForeignKey(d => d.ProjectId)
+                  .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasOne(d => d.Author)
                   .WithMany(p => p.Requirements)

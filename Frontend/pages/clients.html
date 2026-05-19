@@ -11,7 +11,6 @@
         #dataTable th:nth-child(4) { width: 15%; } 
         #dataTable th:nth-child(5) { width: 15%; }
         #dataTable th:nth-child(6) { width: 15%; }
-
         .date-cell { color: #000; font-weight: 500; }
         .time-cell { color: #888; font-size: 0.85em; margin-top: 2px; }
     </style>
@@ -69,6 +68,20 @@
         </thead>
         <tbody id="clientsBody"></tbody>
     </table>
+
+    <div class="pagination-wrapper">
+        <div class="pagination-info">
+            Показати по 
+            <select id="rowsPerPageSelect">
+                <option value="20">20</option>
+                <option value="50" selected>50</option>
+                <option value="100">100</option>
+                <option value="200">200</option>
+            </select>
+            записів
+        </div>
+        <div class="pagination-controls" id="paginationControls"></div>
+    </div>
 </div>
 
 <div id="clientModal" style="display:none; position: fixed; z-index: 1100; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);">
@@ -77,13 +90,10 @@
         <form id="addClientForm">
             <label>Ім'я:</label>
             <input type="text" id="clientFirstName" style="width:100%; margin: 5px 0 15px 0; padding: 5px; box-sizing: border-box;" required>
-
             <label>Прізвище:</label>
             <input type="text" id="clientLastName" style="width:100%; margin: 5px 0 15px 0; padding: 5px; box-sizing: border-box;" required>
-
             <label>Імейл:</label>
             <input type="email" id="clientEmail" style="width:100%; margin: 5px 0 15px 0; padding: 5px; box-sizing: border-box;" required>
-
             <div style="margin-top: 20px; display: flex; justify-content: space-between;">
                 <button type="button" id="closeModalBtn" style="background:#6c757d; color:white; border:none; padding:8px 15px; border-radius:4px; cursor: pointer;">Скасувати</button>
                 <button type="submit" style="background:#007bff; color:white; border:none; padding:8px 15px; border-radius:4px; cursor: pointer;">Зберегти</button>
@@ -110,16 +120,21 @@
 
 <script type="module">
     import { clientApi } from '../js/api/clientApi.js';
+    let allClients = [];
     let selectedId = null;
     let editMode = false;
     let currentEditId = null;
     let currentRegistrationDate = null;
+    let currentPage = 1;
+    let rowsPerPage = 50;
 
     const modal = document.getElementById('clientModal');
     const modalHeader = document.getElementById('modalTitle');
     const openBtn = document.getElementById('openModalBtn');
     const closeBtn = document.getElementById('closeModalBtn');
     const form = document.getElementById('addClientForm');
+    const body = document.getElementById('clientsBody');
+    const rowsSelect = document.getElementById('rowsPerPageSelect');
 
     document.getElementById('currentUserName').innerText = localStorage.getItem('userName') || 'Гість';
 
@@ -128,172 +143,119 @@
         window.location.href = 'login.html';
     };
 
+    rowsSelect.addEventListener('change', (e) => {
+        rowsPerPage = parseInt(e.target.value);
+        currentPage = 1;
+        renderClients();
+    });
+
     window.showActionMenu = (event, id) => {
         event.stopPropagation(); 
         selectedId = id;
         const menu = document.getElementById('contextMenu');
-        
         menu.style.display = 'block';
         menu.style.left = `${event.pageX - 100}px`;
         menu.style.top = `${event.pageY + 10}px`;
     };
 
     document.addEventListener('click', () => {
-        document.getElementById('contextMenu').style.display = 'none';
+        const menu = document.getElementById('contextMenu');
+        if (menu) menu.style.display = 'none';
     });
 
     function formatDateTime(isoString) {
         if (!isoString) return '-';
         const date = new Date(isoString);
-        
-        const datePart = date.toLocaleDateString('uk-UA', { 
-            day: '2-digit', month: '2-digit', year: 'numeric',
-            timeZone: 'Europe/Kyiv'
-        });
-
-        const timePart = date.toLocaleTimeString('uk-UA', { 
-            hour: '2-digit', minute: '2-digit',
-            timeZone: 'Europe/Kyiv'
-        });
-
-        return `
-            <div class="date-cell">${datePart}</div>
-            <div class="time-cell">${timePart}</div>
-        `;
+        const datePart = date.toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Europe/Kyiv' });
+        const timePart = date.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Kyiv' });
+        return `<div class="date-cell">${datePart}</div><div class="time-cell">${timePart}</div>`;
     }
 
     async function loadClients() {
         try {
-            const clients = await clientApi.getAll();
-            const body = document.getElementById('clientsBody');
+            allClients = await clientApi.getAll();
+            renderClients();
+        } catch (err) { console.error(err); }
+    }
 
-            if (!clients || clients.length === 0) {
-                body.innerHTML = '<tr><td colspan="6" style="text-align:center;">Клієнтів поки немає.</td></tr>';
-                return;
-            }
-
-            body.innerHTML = clients.map(client => {
-                const fName = client.firstName || client.FirstName || '';
-                const lName = client.lastName || client.LastName || '';
-                const fullName = `${fName} ${lName}`.trim() || 'Без імені';
-                const projectsCount = client.projects ? client.projects.length : 0;
-                const dateToFormat = client.createdAt || client.CreatedAt;
-
-                return `
-                    <tr>
-                        <td>${client.id}</td>
-                        <td>${fullName}</td>
-                        <td>${client.email || client.Email || '-'}</td>
-                        <td >${projectsCount}</td>
-                        <td>${formatDateTime(dateToFormat)}</td>
-                        <td>
-                            <button onclick="showActionMenu(event, ${client.id})" style="background:#d4d4d4; border:none; border-radius:4px; cursor:pointer; padding:3px 10px;">•••</button>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-        } catch (err) {
-            console.error("Помилка завантаження клієнтів:", err);
+    function renderClients() {
+        if (!allClients || allClients.length === 0) {
+            body.innerHTML = '<tr><td colspan="6" style="text-align:center;">Клієнтів поки немає.</td></tr>';
+            renderPaginationControls(0);
+            return;
         }
+        const start = (currentPage - 1) * rowsPerPage;
+        const end = start + rowsPerPage;
+        const pageData = allClients.slice(start, end);
+        body.innerHTML = pageData.map(client => {
+            const fName = client.firstName || client.FirstName || '';
+            const lName = client.lastName || client.LastName || '';
+            const fullName = `${fName} ${lName}`.trim() || 'Без імені';
+            const projectsCount = client.projects ? client.projects.length : 0;
+            const dateToFormat = client.createdAt || client.CreatedAt;
+            return `<tr><td>${client.id}</td><td>${fullName}</td><td>${client.email || client.Email || '-'}</td><td>${projectsCount}</td><td>${formatDateTime(dateToFormat)}</td><td><button onclick="showActionMenu(event, ${client.id})" style="background:#d4d4d4; border:none; border-radius:4px; cursor:pointer; padding:3px 10px;">•••</button></td></tr>`;
+        }).join('');
+        renderPaginationControls(allClients.length);
+    }
+
+    function renderPaginationControls(totalItems) {
+        const controlsContainer = document.getElementById('paginationControls');
+        const totalPages = Math.ceil(totalItems / rowsPerPage);
+        if (totalPages <= 1) { controlsContainer.innerHTML = ''; return; }
+        let controlsHtml = `<button class="pagination-btn" ${currentPage === 1 ? 'disabled' : ''} id="prevPage">&lt;</button>`;
+        for (let i = 1; i <= totalPages; i++) { controlsHtml += `<button class="pagination-btn ${i === currentPage ? 'active' : ''}" data-page="${i}">${i}</button>`; }
+        controlsHtml += `<button class="pagination-btn" ${currentPage === totalPages ? 'disabled' : ''} id="nextPage">&gt;</button>`;
+        controlsContainer.innerHTML = controlsHtml;
+        controlsContainer.querySelectorAll('.pagination-btn[data-page]').forEach(btn => {
+            btn.onclick = (e) => { currentPage = parseInt(e.target.dataset.page); renderClients(); };
+        });
+        const prevBtn = document.getElementById('prevPage');
+        const nextBtn = document.getElementById('nextPage');
+        if (prevBtn) prevBtn.onclick = () => { currentPage--; renderClients(); };
+        if (nextBtn) nextBtn.onclick = () => { currentPage++; renderClients(); };
     }
 
     window.openEditModal = async (id) => {
         try {
             const client = await clientApi.getById(id);
-            
             document.getElementById('clientFirstName').value = client.firstName || client.FirstName || '';
             document.getElementById('clientLastName').value = client.lastName || client.LastName || '';
             document.getElementById('clientEmail').value = client.email || '';
-            
-            currentRegistrationDate = client.startDate || client.registrationDate;
-
+            currentRegistrationDate = client.startDate || client.registrationDate || client.createdAt || client.CreatedAt;
             modalHeader.innerText = "Редагувати дані клієнта";
             editMode = true;
             currentEditId = id;
             modal.style.display = "block";
-        } catch (err) {
-            alert("Помилка завантаження даних клієнта");
-        }
-    };
-    window.handleEditFromMenu = () => {
-        document.getElementById('contextMenu').style.display = 'none';
-        window.openEditModal(selectedId);
+        } catch (err) { alert("Помилка завантаження"); }
     };
 
-    window.handleDeleteFromMenu = () => {
-        document.getElementById('contextMenu').style.display = 'none';
-        document.getElementById('deleteConfirmModal').style.display = 'block';
-    };
-
-    window.closeDeleteModal = () => {
-        document.getElementById('deleteConfirmModal').style.display = 'none';
-    };
+    window.handleEditFromMenu = () => { document.getElementById('contextMenu').style.display = 'none'; window.openEditModal(selectedId); };
+    window.handleDeleteFromMenu = () => { document.getElementById('contextMenu').style.display = 'none'; document.getElementById('deleteConfirmModal').style.display = 'block'; };
+    window.closeDeleteModal = () => { document.getElementById('deleteConfirmModal').style.display = 'none'; };
 
     document.getElementById('confirmDeleteBtn').onclick = async () => {
         try {
             await clientApi.delete(selectedId);
             window.closeDeleteModal();
             loadClients(); 
-        } catch (err) {
-            console.error("Помилка при видаленні:", err);
-            alert("Не вдалося видалити клієнта. Можливо, у нього є активні проєкти?");
-        }
+        } catch (err) { alert("Не вдалося видалити клієнта."); }
     };
 
-    const deleteModal = document.getElementById('deleteConfirmModal');
-    window.addEventListener('click', (event) => {
-        if (event.target === deleteModal) {
-            window.closeDeleteModal();
-        }
-    });
-
-    openBtn.onclick = () => {
-        editMode = false;
-        currentEditId = null;
-        currentRegistrationDate = null;
-        modalHeader.innerText = "Новий клієнт";
-        form.reset();
-        modal.style.display = "block";
-    };
-
-    closeBtn.onclick = () => {
-        modal.style.display = "none";
-    };
-
-    window.onclick = (event) => {
-        if (event.target == modal) modal.style.display = "none";
-    };
-
+    openBtn.onclick = () => { editMode = false; currentEditId = null; modalHeader.innerText = "Новий клієнт"; form.reset(); modal.style.display = "block"; };
+    closeBtn.onclick = () => { modal.style.display = "none"; };
     form.onsubmit = async (e) => {
         e.preventDefault();
-        
         const now = new Date();
         const offset = now.getTimezoneOffset() * 60000;
         const localISOTime = new Date(now - offset).toISOString().slice(0, -1) + "+03:00";
-
-        const clientData = {
-            FirstName: document.getElementById('clientFirstName').value,
-            LastName: document.getElementById('clientLastName').value,
-            Email: document.getElementById('clientEmail').value,
-            CreatedAt: editMode ? currentRegistrationDate : localISOTime 
-        };
-
-        if (editMode) {
-            clientData.Id = currentEditId;
-        }
-
+        const clientData = { FirstName: document.getElementById('clientFirstName').value, LastName: document.getElementById('clientLastName').value, Email: document.getElementById('clientEmail').value, CreatedAt: editMode ? currentRegistrationDate : localISOTime };
+        if (editMode) clientData.Id = currentEditId;
         try {
-            if (editMode) {
-                await clientApi.update(currentEditId, clientData);
-            } else {
-                await clientApi.create(clientData);
-            }
+            if (editMode) await clientApi.update(currentEditId, clientData);
+            else await clientApi.create(clientData);
             modal.style.display = "none";
             loadClients();
-        } catch (err) {
-            console.error("Помилка збереження:", err);
-            alert("Не вдалося зберегти дані");
-        }
+        } catch (err) { alert("Не вдалося зберегти дані"); }
     };
 
     loadClients();

@@ -4,5 +4,7 @@ public interface IRequirementService
 {
     Task<IEnumerable<Requirement>> GetAllDetailedAsync();
     Task<bool> CreateRequirementAsync(Requirement req);
+    Task<bool> UpdateRequirementAsync(int id, Requirement req);
+    Task<bool> DeleteRequirementAsync(int id);
     Task<string> TestConnectionAsync();
 }

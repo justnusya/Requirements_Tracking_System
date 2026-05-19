@@ -40,6 +40,47 @@ namespace Backend.Services
             }
         }
 
+        public async Task<bool> UpdateRequirementAsync(int id, Requirement req)
+        {
+            try
+            {
+                var existingReq = await _context.Requirements.FindAsync(id);
+                if (existingReq == null) return false;
+
+                existingReq.Title = req.Title;
+                existingReq.Description = req.Description;
+                existingReq.ProjectId = req.ProjectId;
+                existingReq.PriorityId = req.PriorityId;
+                existingReq.StatusId = req.StatusId;
+                existingReq.UpdatedAt = DateTime.UtcNow;
+
+                _context.Requirements.Update(existingReq);
+                await _context.SaveChangesAsync();
+                return true;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+        
+        public async Task<bool> DeleteRequirementAsync(int id)
+        {
+            try
+            {
+                var req = await _context.Requirements.FindAsync(id);
+                if (req == null) return false;
+
+                _context.Requirements.Remove(req);
+                await _context.SaveChangesAsync();
+                return true;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
         public async Task<string> TestConnectionAsync()
         {
             try

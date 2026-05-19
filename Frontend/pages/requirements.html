@@ -2,16 +2,26 @@
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <title>Вимоги - Requirements System</title>
+    <title>Вимоги - Yuppie</title>
     <link rel="stylesheet" href="../css/style.css">
     <style>
         #dataTable th:nth-child(1) { width: 5%; } 
-        #dataTable th:nth-child(2) { width: 20%; }
-        #dataTable th:nth-child(3) { width: 25%; } 
+        #dataTable th:nth-child(2) { width: 18%; }
+        #dataTable th:nth-child(3) { width: 22%; } 
         #dataTable th:nth-child(4) { width: 15%; } 
         #dataTable th:nth-child(5) { width: 12%; }
         #dataTable th:nth-child(6) { width: 13%; } 
-        #dataTable th:nth-child(7) { width: 10%; } 
+        #dataTable th:nth-child(7) { width: 5%; }
+        .filter-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.3); z-index: 1090; backdrop-filter: blur(2px); }
+        .filter-panel { display: none; position: fixed; right: 0; top: 0; width: 320px; height: 100%; background: white; z-index: 1100; box-shadow: -5px 0 25px rgba(0,0,0,0.1); padding: 25px; box-sizing: border-box; animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+        .filter-group { margin-bottom: 20px; }
+        .filter-group label { display: block; margin-bottom: 8px; font-weight: 500; color: #555; }
+        .filter-select { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #ddd; outline: none; font-family: inherit; }
+        .filter-actions { position: absolute; bottom: 25px; left: 25px; right: 25px; display: flex; gap: 10px; }
+        .header-filter-btn { font-size: 24px; cursor: pointer; background: none; border: none; padding: 5px 10px; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
+        .header-filter-btn img { width: 24px; height: auto; filter: brightness(0) opacity(0.6); transition: all 0.3s ease; }
+        .header-filter-btn:hover img { filter: brightness(0) opacity(0.3); transform: scale(1.1); }
     </style>
 </head>
 <body>
@@ -48,9 +58,14 @@
 
 <div style="display: flex; justify-content: space-between; align-items: center; padding: 2rem 2rem 1rem 2rem;">
     <h2 style="margin: 0; font-weight: 500;">Список вимог</h2>
-    <button id="openModalBtn" style="background: #7300ff; color: white; border: none; padding: 10px 20px; border-radius: 10px; cursor: pointer; font-weight: bolder;">
-        Додати вимогу
-    </button>
+    <div style="display: flex; align-items: center; gap: 15px;">
+        <button class="header-filter-btn" onclick="toggleFilterPanel()" title="Фільтрація">
+            <img src="../images/filterIcon.png" alt="Filter" style="width: 24px; height: auto; opacity: 0.7;">
+        </button>
+        <button id="openModalBtn" style="background: #7300ff; color: white; border: none; padding: 10px 20px; border-radius: 10px; cursor: pointer; font-weight: bolder;">
+            Додати вимогу
+        </button>
+    </div>
 </div>
 
 <div class="container">
@@ -68,30 +83,38 @@
         </thead>
         <tbody id="requirementsBody"></tbody>
     </table>
+
+    <div class="pagination-wrapper">
+        <div class="pagination-info">
+            Показати по 
+            <select id="rowsPerPageSelect">
+                <option value="20" selected>20</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+                <option value="200">200</option>
+            </select>
+            записів
+        </div>
+        <div class="pagination-controls" id="paginationControls"></div>
+    </div>
 </div>
 
 <div id="requirementModal" style="display:none; position: fixed; z-index: 1100; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);">
-    <div style="background-color: white; margin: 10% auto; padding: 20px; border-radius: 8px; width: 400px; box-shadow: 0 5px 15px rgba(0,0,0,0.3);">
-        <h3>Нова вимога</h3>
+    <div style="background-color: white; margin: 5% auto; padding: 20px; border-radius: 8px; width: 400px; box-shadow: 0 5px 15px rgba(0,0,0,0.3);">
+        <h3 id="modalReqTitle">Нова вимога</h3>
         <form id="addRequirementForm">
             <label>Назва:</label>
             <input type="text" id="reqTitle" style="width:100%; margin: 10px 0;" required>
-            
             <label>Опис:</label>
             <textarea id="reqDescription" style="width:100%; margin: 10px 0;" rows="3"></textarea>
-
             <label>Проєкт:</label>
-            <select id="reqProject" style="width:100%; margin: 10px 0; padding: 5px;" required>
-                <option value="">Оберіть проєкт...</option>
-            </select>
-
+            <select id="reqProject" style="width:100%; margin: 10px 0; padding: 5px;" required></select>
             <label>Пріоритет:</label>
             <select id="reqPriority" style="width:100%; margin: 10px 0;">
                 <option value="Low">Низький</option>
                 <option value="Medium">Середній</option>
                 <option value="High">Високий</option>
             </select>
-
             <label>Статус:</label>
             <select id="reqStatus" style="width:100%; margin: 10px 0;">
                 <option value="1">Нова</option>
@@ -99,86 +122,192 @@
                 <option value="3">В роботі</option>
                 <option value="4">Виконано</option>
             </select>
-
             <div style="margin-top: 20px; display: flex; justify-content: space-between;">
-                <button type="button" id="closeModalBtn" style="background:#6c757d; color:white; border:none; padding:8px 15px; border-radius:4px; cursor: pointer;">Скасувати</button>
+                <button type="button" id="closeModalBtn" class="btn-cancel">Скасувати</button>
                 <button type="submit" style="background:#007bff; color:white; border:none; padding:8px 15px; border-radius:4px; cursor: pointer;">Зберегти</button>
             </div>
         </form>
     </div>
 </div>
 
+<div id="contextMenu" class="action-menu">
+    <button onclick="handleEditFromMenu()">Edit</button>
+    <button class="delete-btn-menu" onclick="handleDeleteFromMenu()">Delete</button>
+</div>
+
+<div id="filterOverlay" class="filter-overlay" onclick="toggleFilterPanel()"></div>
+<div id="filterPanel" class="filter-panel">
+    <h3 style="margin-top: 0; color: #7300ff;">Фільтрація</h3>
+    <div class="filter-group">
+        <label>Проєкт:</label>
+        <select id="filterProject" class="filter-select">
+            <option value="all">Усі проєкти</option>
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>Пріоритет:</label>
+        <select id="filterPriority" class="filter-select">
+            <option value="all">Усі пріоритети</option>
+            <option value="1">Низький</option>
+            <option value="2">Середній</option>
+            <option value="3">Високий</option>
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>Статус:</label>
+        <select id="filterStatus" class="filter-select">
+            <option value="all">Усі статуси</option>
+            <option value="1">Нова</option>
+            <option value="2">Заплановано</option>
+            <option value="3">В роботі</option>
+            <option value="4">Виконано</option>
+        </select>
+    </div>
+    <div class="filter-actions">
+        <button onclick="resetFilters()" style="flex: 1; padding: 10px; border: 1px solid #ddd; background: white; border-radius: 6px; cursor: pointer;">Скинути</button>
+        <button onclick="applyFilters()" style="flex: 1; padding: 10px; background: #7300ff; color: white; border: none; border-radius: 6px; cursor: pointer;">Пошук</button>
+    </div>
+</div>
+
 <script type="module">
     import { requirementApi } from '../js/api/requirementApi.js';
     import { projectApi } from '../js/api/projectApi.js';
-    
-    let currentCreatedAt = null;
+    let allRequirements = [];
+    let filteredRequirements = [];
+    let selectedId = null;
     let editMode = false;
     let currentEditId = null;
+    let currentCreatedAt = null;
+    
+    let currentPage = 1;
+    let rowsPerPage = 20;
 
     const modal = document.getElementById('requirementModal');
-    const modalTitle = document.querySelector('#requirementModal h3');
-    const openBtn = document.getElementById('openModalBtn');
-    const closeBtn = document.getElementById('closeModalBtn');
-    const form = document.getElementById('addRequirementForm');
-    const projectSelect = document.getElementById('reqProject');
+    const modalTitle = document.getElementById('modalReqTitle');
+    const body = document.getElementById('requirementsBody');
+    const rowsSelect = document.getElementById('rowsPerPageSelect');
 
     document.getElementById('currentUserName').innerText = localStorage.getItem('userName') || 'Гість';
 
-    window.logout = () => {
-        localStorage.clear();
-        window.location.href = 'login.html';
+    window.logout = () => { localStorage.clear(); window.location.href = 'login.html'; };
+    rowsSelect.addEventListener('change', (e) => { rowsPerPage = parseInt(e.target.value); currentPage = 1; renderRequirements(); });
+
+    window.toggleFilterPanel = () => {
+        const panel = document.getElementById('filterPanel');
+        const overlay = document.getElementById('filterOverlay');
+        const isOpen = panel.style.display === 'block';
+        panel.style.display = isOpen ? 'none' : 'block';
+        overlay.style.display = isOpen ? 'none' : 'block';
+    };
+
+    window.resetFilters = () => {
+        document.getElementById('filterProject').value = 'all';
+        document.getElementById('filterPriority').value = 'all';
+        document.getElementById('filterStatus').value = 'all';
+        filteredRequirements = [...allRequirements];
+        currentPage = 1;
+        renderRequirements();
+        window.toggleFilterPanel();
+    };
+
+    window.applyFilters = () => {
+        const projId = document.getElementById('filterProject').value;
+        const prioId = document.getElementById('filterPriority').value;
+        const statId = document.getElementById('filterStatus').value;
+        filteredRequirements = allRequirements.filter(req => {
+            const matchProj = projId === 'all' || req.projectId == projId;
+            const matchPrio = prioId === 'all' || req.priorityId == prioId;
+            const matchStat = statId === 'all' || req.statusId == statId;
+            return matchProj && matchPrio && matchStat;
+        });
+        currentPage = 1;
+        renderRequirements();
+        window.toggleFilterPanel();
+    };
+
+    window.showActionMenu = (event, id) => {
+        event.stopPropagation();
+        selectedId = id;
+        const menu = document.getElementById('contextMenu');
+        menu.style.display = 'block';
+        menu.style.left = `${event.pageX - 100}px`;
+        menu.style.top = `${event.pageY + 10}px`;
+    };
+
+    document.addEventListener('click', () => {
+        const menu = document.getElementById('contextMenu');
+        if (menu) menu.style.display = 'none';
+    });
+
+    window.handleEditFromMenu = () => { document.getElementById('contextMenu').style.display = 'none'; window.openEditModal(selectedId); };
+    window.handleDeleteFromMenu = async () => {
+        document.getElementById('contextMenu').style.display = 'none';
+        try { await requirementApi.delete(selectedId); loadRequirements(); } catch (err) { alert("Помилка видалення"); }
     };
 
     async function loadRequirements() {
-        try {
-            const requirements = await requirementApi.getAll();
-            const body = document.getElementById('requirementsBody');
-            
-            if (!requirements || requirements.length === 0) {
-                body.innerHTML = '<tr><td colspan="7">Вимог поки немає. Додайте першу!</td></tr>';
-                return;
-            }
-
-            body.innerHTML = requirements.map(req => {
-                const priorityText = req.priorityId === 3 ? "Високий" : req.priorityId === 2 ? "Середній" : "Низький";
-                const statusText = 
-                    req.statusId === 1 ? "Нова" : 
-                    req.statusId === 2 ? "Заплановано" : 
-                    req.statusId === 3 ? "В роботі" : "Виконано";
-
-                return `
-                    <tr>
-                        <td>${req.id}</td>
-                        <td>${req.title}</td>
-                        <td>${req.description || '-'}</td>
-                        <td>${req.project ? (req.project.projectName || req.project.name) : 'null в обєкті'}</td>
-                        <td>${priorityText}</td>
-                        <td>${statusText}</td>
-                        <td>
-                            <button onclick="openEditModal(${req.id})" style="background:#d4d4d4; border:none; border-radius:4px; cursor:pointer; padding:3px 10px;">•••</button>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-        } catch (err) {
-            console.error("Не вдалося завантажити вимоги", err);
-        }
+        try { allRequirements = await requirementApi.getAll(); filteredRequirements = [...allRequirements]; renderRequirements(); } catch (err) { console.error(err); }
     }
 
-    async function loadProjectsToSelect() {
+    function renderRequirements() {
+        if (!filteredRequirements || filteredRequirements.length === 0) {
+            body.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 40px; color: #888;">Результатів немає</td></tr>';
+            renderPaginationControls(0);
+            return;
+        }
+        
+        const start = (currentPage - 1) * rowsPerPage;
+        const end = start + rowsPerPage;
+        const pageData = filteredRequirements.slice(start, end);
+        
+        body.innerHTML = pageData.map(req => {
+            const priorityText = req.priorityId === 3 ? "Високий" : req.priorityId === 2 ? "Середній" : "Низький";
+            const statusText = req.statusId === 1 ? "Нова" : req.statusId === 2 ? "Заплановано" : req.statusId === 3 ? "В роботі" : "Виконано";
+            return `<tr><td>${req.id}</td><td>${req.title}</td><td>${req.description || '-'}</td><td>${req.project ? req.project.projectName : 'Не обрано'}</td><td>${priorityText}</td><td>${statusText}</td><td><button onclick="showActionMenu(event, ${req.id})" style="background:#d4d4d4; border:none; border-radius:4px; cursor:pointer; padding:3px 10px;">•••</button></td></tr>`;
+        }).join('');
+        
+        renderPaginationControls(filteredRequirements.length);
+    }
+
+    function renderPaginationControls(totalItems) {
+        const controlsContainer = document.getElementById('paginationControls');
+        const totalPages = Math.ceil(totalItems / rowsPerPage);
+        
+        if (totalPages <= 1) { 
+            controlsContainer.innerHTML = ''; 
+            return; 
+        }
+        
+        let controlsHtml = `<button class="pagination-btn" ${currentPage === 1 ? 'disabled' : ''} id="prevPage">&lt;</button>`;
+        for (let i = 1; i <= totalPages; i++) { 
+            controlsHtml += `<button class="pagination-btn ${i === currentPage ? 'active' : ''}" data-page="${i}">${i}</button>`; 
+        }
+        controlsHtml += `<button class="pagination-btn" ${currentPage === totalPages ? 'disabled' : ''} id="nextPage">&gt;</button>`;
+        controlsContainer.innerHTML = controlsHtml;
+        
+        controlsContainer.querySelectorAll('.pagination-btn[data-page]').forEach(btn => {
+            btn.onclick = (e) => { 
+                currentPage = parseInt(e.target.dataset.page); 
+                renderRequirements(); 
+            };
+        });
+        
+        const prevBtn = document.getElementById('prevPage');
+        const updateNextBtn = document.getElementById('nextPage');
+        
+        if (prevBtn) prevBtn.onclick = () => { currentPage--; renderRequirements(); };
+        if (updateNextBtn) updateNextBtn.onclick = () => { currentPage++; renderRequirements(); };
+    }
+
+    async function loadResources() {
         try {
             const projects = await projectApi.getAll();
-            projectSelect.innerHTML = '<option value="">Оберіть проєкт...</option>';
-            projects.forEach(proj => {
-                const option = document.createElement('option');
-                option.value = proj.id;
-                option.textContent = proj.projectName;
-                projectSelect.appendChild(option);
-            });
-        } catch (err) {
-            console.error("Не вдалося завантажити список проєктів", err);
-        }
+            const modalSelect = document.getElementById('reqProject');
+            const filterSelect = document.getElementById('filterProject');
+            const options = projects.map(p => `<option value="${p.id}">${p.projectName}</option>`).join('');
+            modalSelect.innerHTML = '<option value="">Оберіть проєкт...</option>' + options;
+            filterSelect.innerHTML = '<option value="all">Усі проєкти</option>' + options;
+        } catch (err) { console.error(err); }
     }
 
     window.openEditModal = async (id) => {
@@ -186,59 +315,33 @@
             const req = await requirementApi.getById(id);
             document.getElementById('reqTitle').value = req.title;
             document.getElementById('reqDescription').value = req.description || '';
+            document.getElementById('reqProject').value = req.projectId;
             document.getElementById('reqPriority').value = req.priorityId === 3 ? "High" : req.priorityId === 2 ? "Medium" : "Low";
             document.getElementById('reqStatus').value = req.statusId.toString();
-            document.getElementById('reqProject').value = req.projectId;
-
             modalTitle.innerText = "Редагувати вимогу";
             editMode = true;
             currentEditId = id;
-            currentCreatedAt = req.createdAt; 
+            currentCreatedAt = req.createdAt;
             modal.style.display = "block";
-        } catch (err) {
-            alert("Помилка завантаження даних");
-        }
+        } catch (err) { alert("Помилка завантаження"); }
     };
 
-    openBtn.onclick = () => {
-        editMode = false;
-        currentEditId = null;
-        modalTitle.innerText = "Нова вимога до ПЗ";
-        form.reset();
-        document.getElementById('reqStatus').value = "1"; 
-        modal.style.display = "block";
-    };
-
-    closeBtn.onclick = () => { modal.style.display = "none"; };
-
-    form.onsubmit = async (e) => {
+    document.getElementById('openModalBtn').onclick = () => { editMode = false; currentEditId = null; modalTitle.innerText = "Нова вимога"; document.getElementById('addRequirementForm').reset(); modal.style.display = "block"; };
+    document.getElementById('closeModalBtn').onclick = () => modal.style.display = "none";
+    
+    document.getElementById('addRequirementForm').onsubmit = async (e) => {
         e.preventDefault();
-        const requirementData = {
-            Id: editMode ? parseInt(currentEditId) : 0,
-            Title: document.getElementById('reqTitle').value,
-            Description: document.getElementById('reqDescription').value,
-            PriorityId: document.getElementById('reqPriority').value === "High" ? 3 : 
-                        document.getElementById('reqPriority').value === "Medium" ? 2 : 1,
-            StatusId: parseInt(document.getElementById('reqStatus').value), 
-            ProjectId: parseInt(document.getElementById('reqProject').value), 
-            AuthorId: parseInt(localStorage.getItem('userId')),
-            CreatedAt: editMode ? currentCreatedAt : new Date().toISOString(),
-            UpdatedAt: new Date().toISOString()
-        };
-
+        const data = { Id: editMode ? parseInt(currentEditId) : 0, Title: document.getElementById('reqTitle').value, Description: document.getElementById('reqDescription').value, PriorityId: document.getElementById('reqPriority').value === "High" ? 3 : document.getElementById('reqPriority').value === "Medium" ? 2 : 1, StatusId: parseInt(document.getElementById('reqStatus').value), ProjectId: parseInt(document.getElementById('reqProject').value), AuthorId: parseInt(localStorage.getItem('userId')), CreatedAt: editMode ? currentCreatedAt : new Date().toISOString(), UpdatedAt: new Date().toISOString() };
         try {
-            if (editMode) {
-                await requirementApi.update(currentEditId, requirementData);
-            } else {
-                await requirementApi.create(requirementData);
-            }
+            if (editMode) await requirementApi.update(currentEditId, data);
+            else await requirementApi.create(data);
             modal.style.display = "none";
             loadRequirements();
-        } catch (err) {
-            console.error("Помилка при збереженні:", err);
-        }
+        } catch (err) { console.error(err); }
     };
-    loadProjectsToSelect();
+
+    window.onclick = (e) => { if (e.target == modal) modal.style.display = "none"; };
+    loadResources();
     loadRequirements();
 </script>
 </body>

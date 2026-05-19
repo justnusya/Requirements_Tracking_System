@@ -5,12 +5,12 @@
     <title>Проєкти - Requirements System</title>
     <link rel="stylesheet" href="../css/style.css">
     <style>
-        #dataTable th:nth-child(1) { width: 5%; } 
+        #dataTable th:nth-child(1) { width: 3%; } 
         #dataTable th:nth-child(2) { width: 20%; }
         #dataTable th:nth-child(3) { width: 30%; }
         #dataTable th:nth-child(4) { width: 10%; } 
         #dataTable th:nth-child(5) { width: 10%; }
-        #dataTable th:nth-child(6) { width: 5%; }
+        #dataTable th:nth-child(6) { width: 7%; }
     </style>
 </head>
 <body>
@@ -67,6 +67,20 @@
         </thead>
         <tbody id="projectsBody"></tbody>
     </table>
+
+    <div class="pagination-wrapper">
+        <div class="pagination-info">
+            Показати по 
+            <select id="rowsPerPageSelect">
+                <option value="20">20</option>
+                <option value="50" selected>50</option>
+                <option value="100">100</option>
+                <option value="200">200</option>
+            </select>
+            записів
+        </div>
+        <div class="pagination-controls" id="paginationControls"></div>
+    </div>
 </div>
 
 <div id="projectModal" style="display:none; position: fixed; z-index: 1100; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);">
@@ -75,21 +89,16 @@
         <form id="addProjectForm">
             <label>Назва:</label>
             <input type="text" id="projTitle" style="width:100%; margin: 10px 0; padding: 5px; box-sizing: border-box;" required>
-            
             <label>Опис:</label>
             <textarea id="projDescription" style="width:100%; margin: 10px 0; padding: 5px; box-sizing: border-box;" rows="3"></textarea>
-
             <label>Замовник:</label>
             <select id="projClientId" style="width:100%; margin: 10px 0; padding: 5px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;" required>
                 <option value="">Завантаження клієнтів...</option>
             </select>
-            
             <label>Бюджет:</label>
             <input type="number" id="projBudget" style="width:100%; margin: 10px 0; padding: 5px; box-sizing: border-box;" required>
-            
             <label>Дата початку:</label>
             <input type="date" id="projStartDate" style="width:100%; margin: 10px 0; padding: 5px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
-
             <div style="margin-top: 20px; display: flex; justify-content: space-between;">
                 <button type="button" id="closeModalBtn" style="background:#6c757d; color:white; border:none; padding:8px 15px; border-radius:4px; cursor: pointer;">Скасувати</button>
                 <button type="submit" style="background:#007bff; color:white; border:none; padding:8px 15px; border-radius:4px; cursor: pointer;">Зберегти</button>
@@ -98,98 +107,129 @@
     </div>
 </div>
 
+<div id="contextMenu" class="action-menu">
+    <button onclick="handleEditFromMenu()">Edit</button>
+    <button class="delete-btn-menu" onclick="handleDeleteFromMenu()">Delete</button>
+</div>
+
+<div id="deleteConfirmModal" style="display:none; position: fixed; z-index: 1200; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);">
+    <div class="confirm-modal-content">
+        <h3>Ви впевнені, що хочете це видалити?</h3>
+        <p style="color: #888; font-size: 0.9em;">Ця дія є безповоротною! Всі пов'язані вимоги будуть видалені.</p>
+        <div class="btn-group-confirm">
+            <button class="btn-cancel" onclick="closeDeleteModal()">Скасувати</button>
+            <button class="btn-delete-final" id="confirmDeleteBtn">Видалити</button>
+        </div>
+    </div>
+</div>
+
 <script type="module">
     import { projectApi } from '../js/api/projectApi.js';
     import { clientApi } from '../js/api/clientApi.js'; 
-    
+    let allProjects = [];
+    let selectedId = null;
     let editMode = false;
     let currentEditId = null;
+    let currentPage = 1;
+    let rowsPerPage = 50;
 
     const modal = document.getElementById('projectModal');
     const modalHeader = document.getElementById('modalTitle');
     const openBtn = document.getElementById('openModalBtn');
     const closeBtn = document.getElementById('closeModalBtn');
     const form = document.getElementById('addProjectForm');
-    
     const clientSelect = document.getElementById('projClientId');
+    const body = document.getElementById('projectsBody');
+    const rowsSelect = document.getElementById('rowsPerPageSelect');
 
     document.getElementById('currentUserName').innerText = localStorage.getItem('userName') || 'Гість';
 
-    window.logout = () => {
-        localStorage.clear();
-        window.location.href = 'login.html';
-    };
+    window.logout = () => { localStorage.clear(); window.location.href = 'login.html'; };
+    rowsSelect.addEventListener('change', (e) => { rowsPerPage = parseInt(e.target.value); currentPage = 1; renderProjects(); });
 
     function formatDate(isoString) {
         if (!isoString) return '-';
         const date = new Date(isoString);
-        return date.toLocaleDateString('uk-UA', { 
-            day: '2-digit', 
-            month: '2-digit', 
-            year: 'numeric' 
-        });
+        return date.toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric' });
     }
+
+    window.showActionMenu = (event, id) => {
+        event.stopPropagation(); 
+        selectedId = id;
+        const menu = document.getElementById('contextMenu');
+        menu.style.display = 'block';
+        menu.style.left = `${event.pageX - 100}px`;
+        menu.style.top = `${event.pageY + 10}px`;
+    };
+
+    document.addEventListener('click', () => {
+        const menu = document.getElementById('contextMenu');
+        if (menu) menu.style.display = 'none';
+    });
+
+    window.handleEditFromMenu = () => { document.getElementById('contextMenu').style.display = 'none'; window.openEditModal(selectedId); };
+    window.handleDeleteFromMenu = () => { document.getElementById('contextMenu').style.display = 'none'; document.getElementById('deleteConfirmModal').style.display = 'block'; };
+    window.closeDeleteModal = () => { document.getElementById('deleteConfirmModal').style.display = 'none'; };
+
+    document.getElementById('confirmDeleteBtn').onclick = async () => {
+        try { await projectApi.delete(selectedId); window.closeDeleteModal(); loadProjects(); } catch (err) { alert("Не вдалося видалити проєкт."); }
+    };
 
     async function loadClientsToSelect() {
         try {
             const clients = await clientApi.getAll(); 
-            
             clientSelect.innerHTML = '<option value="">Оберіть замовника...</option>';
-            
             clients.forEach(client => {
                 const option = document.createElement('option');
                 option.value = client.id;
-                
                 const fName = client.firstName || client.FirstName || '';
                 const lName = client.lastName || client.LastName || '';
                 option.textContent = `${fName} ${lName}`.trim() || `Клієнт #${client.id}`;
-                
                 clientSelect.appendChild(option);
             });
-        } catch (err) {
-            console.error("Помилка завантаження клієнтів:", err);
-            clientSelect.innerHTML = '<option value="">Помилка завантаження</option>';
-        }
+        } catch (err) { clientSelect.innerHTML = '<option value="">Помилка завантаження</option>'; }
     }
 
     async function loadProjects() {
-        try {
-            const projects = await projectApi.getAll();
-            const body = document.getElementById('projectsBody');
-            
-            if (!projects || projects.length === 0) {
-                body.innerHTML = '<tr><td colspan="7">Проєктів поки немає.</td></tr>';
-                return;
-            }
+        try { allProjects = await projectApi.getAll(); renderProjects(); } catch (err) { console.error(err); }
+    }
 
-            body.innerHTML = projects.map(proj => {
-                let clientDisplay = '<span style="color: #999;">Не обрано</span>';
-                
-                if (proj.client) {
-                    const fName = proj.client.firstName || proj.client.FirstName || '';
-                    const lName = proj.client.lastName || proj.client.LastName || '';
-                    clientDisplay = `${fName} ${lName}`.trim() || 'Клієнт без імені';
-                } else if (proj.clientId) {
-                    clientDisplay = `<span style="color: #888;">Не обрано</span>`;
-                }
-
-                return `
-                    <tr>
-                        <td>${proj.id}</td>
-                        <td>${proj.projectName}</td>
-                        <td>${proj.description || '-'}</td>
-                        <td>${clientDisplay}</td>
-                        <td>$${proj.budget}</td>
-                        <td>${formatDate(proj.startDate)}</td>
-                        <td>
-                            <button onclick="showActionMenu(event, ${proj.id})" style="background:#d4d4d4; border:none; border-radius:4px; cursor:pointer; padding:3px 10px;">•••</button>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-        } catch (err) {
-            console.error("Не вдалося завантажити проєкти", err);
+    function renderProjects() {
+        if (!allProjects || allProjects.length === 0) {
+            body.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:40px;">Проєктів поки немає.</td></tr>';
+            renderPaginationControls(0);
+            return;
         }
+        const start = (currentPage - 1) * rowsPerPage;
+        const end = start + rowsPerPage;
+        const pageData = allProjects.slice(start, end);
+        body.innerHTML = pageData.map(proj => {
+            let clientDisplay = '<span style="color: #999;">Не обрано</span>';
+            if (proj.client) {
+                const fName = proj.client.firstName || proj.client.FirstName || '';
+                const lName = proj.client.lastName || proj.client.LastName || '';
+                clientDisplay = `${fName} ${lName}`.trim() || 'Клієнт без імені';
+            }
+            return `<tr><td>${proj.id}</td><td>${proj.projectName}</td><td>${proj.description || '-'}</td><td>${clientDisplay}</td><td>$${proj.budget}</td><td>${formatDate(proj.startDate)}</td><td><button onclick="showActionMenu(event, ${proj.id})" style="background:#d4d4d4; border:none; border-radius:4px; cursor:pointer; padding:3px 10px;">•••</button></td></tr>`;
+        }).join('');
+        renderPaginationControls(allProjects.length);
+    }
+
+    function renderPaginationControls(totalItems) {
+        const controlsContainer = document.getElementById('paginationControls');
+        const totalPages = Math.ceil(totalItems / rowsPerPage);
+        if (totalPages <= 1) { controlsContainer.innerHTML = ''; return; }
+        let controlsHtml = `<button class="pagination-btn" ${currentPage === 1 ? 'disabled' : ''} id="prevPage">&lt;</button>`;
+        for (let i = 1; i <= totalPages; i++) { controlsHtml += `<button class="pagination-btn ${i === currentPage ? 'active' : ''}" data-page="${i}">${i}</button>`; }
+        controlsHtml += `<button class="pagination-btn" ${currentPage === totalPages ? 'disabled' : ''} id="nextPage">&gt;</button>`;
+        controlsContainer.innerHTML = controlsHtml;
+        controlsContainer.querySelectorAll('.pagination-btn[data-page]').forEach(btn => {
+            btn.onclick = (e) => { currentPage = parseInt(e.target.dataset.page); renderProjects(); };
+        });
+        const prevBtn = document.getElementById('prevPage');
+        const nextBtn = document.getElementById('nextPage');
+        if (prevBtn) prevBtn.onclick = () => { currentPage--; renderProjects(); };
+        if (nextBtn) nextBtn.onclick = () => { currentPage++; renderProjects(); };
     }
 
     window.openEditModal = async (id) => {
@@ -197,58 +237,28 @@
             const proj = await projectApi.getById(id);
             document.getElementById('projTitle').value = proj.projectName;
             document.getElementById('projDescription').value = proj.description || '';
-            document.getElementById('projClientId').value = proj.clientId;
+            document.getElementById('projClientId').value = proj.clientId || "";
             document.getElementById('projBudget').value = proj.budget;
             document.getElementById('projStartDate').value = proj.startDate ? proj.startDate.split('T')[0] : '';
-
             modalHeader.innerText = "Редагувати проєкт";
             editMode = true;
             currentEditId = id;
             modal.style.display = "block";
-        } catch (err) {
-            alert("Помилка завантаження даних");
-        }
+        } catch (err) { alert("Помилка завантаження"); }
     };
 
-    openBtn.onclick = () => {
-        editMode = false;
-        currentEditId = null;
-        modalHeader.innerText = "Новий проєкт";
-        form.reset();
-        modal.style.display = "block";
-    };
-
+    openBtn.onclick = () => { editMode = false; currentEditId = null; modalHeader.innerText = "Новий проєкт"; form.reset(); modal.style.display = "block"; };
     closeBtn.onclick = () => modal.style.display = "none";
-
-    window.onclick = (event) => {
-        if (event.target == modal) modal.style.display = "none";
-    };
-
     form.onsubmit = async (e) => {
         e.preventDefault();
-        const projectData = {
-            ProjectName: document.getElementById('projTitle').value,
-            Description: document.getElementById('projDescription').value,
-            ClientId: parseInt(document.getElementById('projClientId').value),
-            Budget: parseFloat(document.getElementById('projBudget').value),
-            StartDate: document.getElementById('projStartDate').value
-        };
-
-        if (editMode) {
-            projectData.Id = currentEditId;
-        }
-
+        const projectData = { ProjectName: document.getElementById('projTitle').value, Description: document.getElementById('projDescription').value, ClientId: parseInt(document.getElementById('projClientId').value), Budget: parseFloat(document.getElementById('projBudget').value), StartDate: document.getElementById('projStartDate').value };
+        if (editMode) projectData.Id = currentEditId;
         try {
-            if (editMode) {
-                await projectApi.update(currentEditId, projectData);
-            } else {
-                await projectApi.create(projectData);
-            }
+            if (editMode) await projectApi.update(currentEditId, projectData);
+            else await projectApi.create(projectData);
             modal.style.display = "none";
             loadProjects();
-        } catch (err) {
-            console.error("Помилка:", err);
-        }
+        } catch (err) { console.error(err); }
     };
 
     loadClientsToSelect();

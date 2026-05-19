@@ -66,5 +66,12 @@ export const requirementApi = {
             console.error('API Error (update):', error);
             throw error;
         }
-    }
+    },
+    async delete(id) {
+        const response = await fetch(`${BASE_URL}/Requirements/${id}`, {
+            method: 'DELETE'
+        });
+        if (!response.ok) throw new Error('Помилка видалення');
+        return true;
+    } 
 };
