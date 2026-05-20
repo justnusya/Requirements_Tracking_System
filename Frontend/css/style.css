@@ -203,3 +203,17 @@ div[style*="justify-content: space-between"] {
     border-color: #6200d4; 
     font-weight: 600;
 }
+.action-menu button {
+    display: block;
+    width: 100%;
+    padding: 10px 15px;
+    border: none;
+    background: none;
+    text-align: left;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.2s;
+}
+.action-menu button:hover {
+    background: #f4f7f6;
+}

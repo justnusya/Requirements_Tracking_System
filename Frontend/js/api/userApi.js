@@ -10,5 +10,33 @@ export const userApi = {
             console.error('UserAPI Error:', error);
             throw error;
         }
+    },
+
+    async login(email, password) {
+        const response = await fetch(`${BASE_URL}/Users/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+        
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.message || 'Помилка при спробі входу.');
+        }
+        return data;
+    },
+
+    async register(email, password, firstName, lastName) {
+        const response = await fetch(`${BASE_URL}/Users/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password, firstName, lastName })
+        });
+        
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.message || 'Помилка при реєстрації.');
+        }
+        return data;
     }
 };

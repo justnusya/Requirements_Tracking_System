@@ -73,5 +73,30 @@ export const projectApi = {
         });
         if (!response.ok) throw new Error('Помилка видалення');
         return true;
-    } 
+    },
+    async getReportData(projectId) {
+        try {
+            const project = await this.getById(projectId);
+
+            const [clientsResponse, reqsResponse] = await Promise.all([
+                fetch(`${BASE_URL}/Clients`),
+                fetch(`${BASE_URL}/Requirements`)
+            ]);
+
+            const clients = clientsResponse.ok ? await clientsResponse.json() : [];
+            const requirements = reqsResponse.ok ? await reqsResponse.json() : [];
+
+            const client = clients.find(c => c.id === project.clientId) || null;
+            const projectRequirements = requirements.filter(r => r.projectId === projectId);
+
+            return {
+                project,
+                client,
+                requirements: projectRequirements
+            };
+        } catch (error) {
+            console.error('API Error (getReportData):', error);
+            throw error;
+        }
+    }
 };

@@ -194,8 +194,15 @@
     import { clientApi } from '../js/api/clientApi.js';
     import { requirementApi } from '../js/api/requirementApi.js';
 
-    document.getElementById('currentUserNameTop').innerText = localStorage.getItem('userName') || 'Гість';
-    document.getElementById('userNameWelcome').innerText = localStorage.getItem('userName') || 'User';
+    const rawStoredName = localStorage.getItem('userName') || 'User';
+    
+    let userFirstName = 'User';
+    if (rawStoredName && rawStoredName !== 'undefined' && rawStoredName !== 'null' && rawStoredName.trim() !== '') {
+        userFirstName = rawStoredName.trim().split(' ')[0]; 
+    }
+
+    document.getElementById('currentUserNameTop').innerText = userFirstName;
+    document.getElementById('userNameWelcome').innerText = userFirstName;
 
     window.logout = () => { localStorage.clear(); window.location.href = 'login.html'; };
 

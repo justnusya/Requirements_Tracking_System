@@ -5,13 +5,14 @@
     <title>Проєкти - Requirements System</title>
     <link rel="stylesheet" href="../css/style.css">
     <style>
-        #dataTable th:nth-child(1) { width: 3%; } 
+        #dataTable th:nth-child(1) { width: 5%; } 
         #dataTable th:nth-child(2) { width: 20%; }
         #dataTable th:nth-child(3) { width: 30%; }
         #dataTable th:nth-child(4) { width: 10%; } 
         #dataTable th:nth-child(5) { width: 10%; }
-        #dataTable th:nth-child(6) { width: 7%; }
+        #dataTable th:nth-child(6) { width: 5%; }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
 
@@ -72,8 +73,8 @@
         <div class="pagination-info">
             Показати по 
             <select id="rowsPerPageSelect">
-                <option value="20">20</option>
-                <option value="50" selected>50</option>
+                <option value="20" selected>20</option>
+                <option value="50">50</option>
                 <option value="100">100</option>
                 <option value="200">200</option>
             </select>
@@ -109,6 +110,7 @@
 
 <div id="contextMenu" class="action-menu">
     <button onclick="handleEditFromMenu()">Edit</button>
+    <button onclick="handleReportFromMenu()" style="color: #7300ff; font-weight: 600;">Get report</button>
     <button class="delete-btn-menu" onclick="handleDeleteFromMenu()">Delete</button>
 </div>
 
@@ -126,12 +128,14 @@
 <script type="module">
     import { projectApi } from '../js/api/projectApi.js';
     import { clientApi } from '../js/api/clientApi.js'; 
+    
     let allProjects = [];
     let selectedId = null;
     let editMode = false;
     let currentEditId = null;
+
     let currentPage = 1;
-    let rowsPerPage = 50;
+    let rowsPerPage = 20;
 
     const modal = document.getElementById('projectModal');
     const modalHeader = document.getElementById('modalTitle');
@@ -145,7 +149,12 @@
     document.getElementById('currentUserName').innerText = localStorage.getItem('userName') || 'Гість';
 
     window.logout = () => { localStorage.clear(); window.location.href = 'login.html'; };
-    rowsSelect.addEventListener('change', (e) => { rowsPerPage = parseInt(e.target.value); currentPage = 1; renderProjects(); });
+
+    rowsSelect.addEventListener('change', (e) => {
+        rowsPerPage = parseInt(e.target.value);
+        currentPage = 1;
+        renderProjects();
+    });
 
     function formatDate(isoString) {
         if (!isoString) return '-';
@@ -157,6 +166,7 @@
         event.stopPropagation(); 
         selectedId = id;
         const menu = document.getElementById('contextMenu');
+        
         menu.style.display = 'block';
         menu.style.left = `${event.pageX - 100}px`;
         menu.style.top = `${event.pageY + 10}px`;
@@ -172,7 +182,116 @@
     window.closeDeleteModal = () => { document.getElementById('deleteConfirmModal').style.display = 'none'; };
 
     document.getElementById('confirmDeleteBtn').onclick = async () => {
-        try { await projectApi.delete(selectedId); window.closeDeleteModal(); loadProjects(); } catch (err) { alert("Не вдалося видалити проєкт."); }
+        try {
+            await projectApi.delete(selectedId);
+            window.closeDeleteModal();
+            loadProjects(); 
+        } catch (err) {
+            console.error("Помилка при видаленні:", err);
+            alert("Не вдалося видалити проєкт.");
+        }
+    };
+
+    window.handleReportFromMenu = async () => {
+        document.getElementById('contextMenu').style.display = 'none';
+        if (!selectedId) return;
+
+        try {
+            const reportData = await projectApi.getReportData(selectedId);
+            const project = reportData.project;
+            const client = reportData.client || { firstName: 'Не вказано', lastName: '', email: '-' };
+            const requirements = reportData.requirements || [];
+
+            const totalReqs = requirements.length;
+
+            const getStatusStats = (statusId) => {
+                const count = requirements.filter(r => r.statusId === statusId).length;
+                const percent = totalReqs > 0 ? Math.round((count / totalReqs) * 100) : 0;
+                return `${count}/${totalReqs} (${percent}%)`;
+            };
+
+            const statNew = getStatusStats(1);
+            const statPlanned = getStatusStats(2);
+            const statInWork = getStatusStats(3);
+            const statDone = getStatusStats(4);
+
+            const sortedRequirements = [...requirements].sort((a, b) => a.statusId - b.statusId);
+
+            const getStatusName = (id) => {
+                if (id === 1) return 'Нова';
+                if (id === 2) return 'Заплановано';
+                if (id === 3) return 'В роботі';
+                if (id === 4) return 'Виконано';
+                return 'Невідомо';
+            };
+
+            const getPriorityName = (id) => {
+                if (id === 3) return 'Високий';
+                if (id === 2) return 'Середній';
+                return 'Низький';
+            };
+
+            let reqListHtml = '';
+            if (sortedRequirements.length === 0) {
+                reqListHtml = `<p style="color: #666; font-style: italic;">Вимог для цього проєкту поки немає.</p>`;
+            } else {
+                sortedRequirements.forEach(r => {
+                    reqListHtml += `
+                        <div style="margin-bottom: 15px; padding: 10px; border-bottom: 1px dashed #ccc;">
+                            <p style="margin: 0 0 5px 0;"><strong>Назва:</strong> ${r.title || '-'}</p>
+                            <p style="margin: 0 0 5px 0;"><strong>Опис:</strong> ${r.description || '-'}</p>
+                            <p style="margin: 0 0 5px 0;"><strong>Статус:</strong> ${getStatusName(r.statusId)} | <strong>Пріоритетність:</strong> ${getPriorityName(r.priorityId)}</p>
+                            <p style="margin: 0; font-size: 12px; color: #666;">
+                                <strong>Дата створення:</strong> ${formatDate(r.createdAt || r.CreatedAt)} | 
+                                <strong>Дата оновлення:</strong> ${formatDate(r.updatedAt || r.UpdatedAt)}
+                            </p>
+                        </div>
+                    `;
+                });
+            }
+
+            const element = document.createElement('div');
+            element.innerHTML = `
+                <div style="font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; color: #000; line-height: 1.5; background: #fff;">
+                    <div style="border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; text-align: center;">
+                        <h2 style="margin: 0; text-transform: uppercase; letter-spacing: 1px;">Звіт</h2>
+                    </div>
+
+                    <h3 style="margin-top: 0; text-transform: uppercase;">ПРОЄКТ:</h3>
+                    <p style="margin: 5px 0;"><strong>Назва:</strong> ${project.projectName}</p>
+                    <p style="margin: 5px 0;"><strong>Опис:</strong> ${project.description || '-'}</p>
+                    <p style="margin: 5px 0;"><strong>Замовник:</strong> ${client.firstName || ''} ${client.lastName || ''} (${client.email || '-'})</p>
+                    <p style="margin: 5px 0;"><strong>Бюджет:</strong> $${project.budget ? project.budget.toLocaleString() : '0'}</p>
+                    <p style="margin: 5px 0;"><strong>Дата початку:</strong> ${formatDate(project.startDate)}</p>
+
+                    <h3 style="text-transform: uppercase;">Вимоги:</h3>
+                    <p style="margin: 5px 0;"><strong>Кількість нових вимог:</strong> ${statNew}</p>
+                    <p style="margin: 5px 0;"><strong>Кількість запланованих вимог:</strong> ${statPlanned}</p>
+                    <p style="margin: 5px 0;"><strong>Кількість вимог у роботі:</strong> ${statInWork}</p>
+                    <p style="margin: 5px 0;"><strong>Кількість виконаних вимог:</strong> ${statDone}</p>
+
+                    <div style="margin-top: 20px;">
+                        ${reqListHtml}
+                    </div>
+
+                    <p style="font-size: 13px; color: #333;"><strong>Згенеровано:</strong> ${new Date().toLocaleString('uk-UA')}</p>
+                </div>
+            `;
+
+            const options = {
+                margin:       15,
+                filename:     `Report_Project_${project.projectName.replace(/\s+/g, '_')}.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2 },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            html2pdf().from(element).set(options).save();
+
+        } catch (err) {
+            console.error("Помилка генерації звіту:", err);
+            alert("Не вдалося сформувати звіт. Перевірте з'єднання з сервером.");
+        }
     };
 
     async function loadClientsToSelect() {

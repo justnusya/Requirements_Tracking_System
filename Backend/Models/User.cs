@@ -7,11 +7,13 @@ public partial class User
 {
     public int Id { get; set; }
 
-    public string Username { get; set; } = null!;
+    public string Email { get; set; } = null!;
 
-    public string? FullName { get; set; }
+    public string Password { get; set; } = null!;
 
-    public string? Role { get; set; }
+    public string? FirstName { get; set; }
+
+    public string? LastName { get; set; }
 
     public virtual ICollection<Requirement> Requirements { get; set; } = new List<Requirement>();
 }

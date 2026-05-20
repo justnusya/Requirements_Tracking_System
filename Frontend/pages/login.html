@@ -2,56 +2,129 @@
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <title>Вхід - Requirements Tracking System</title>
+    <title>Авторизація - Requirements Tracking System</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background: #f0f2f5; margin: 0; }
-        .login-card { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 350px; }
-        input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
-        button { width: 100%; padding: 10px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
-        button:hover { background: #0056b3; }
-        .error { color: red; font-size: 14px; display: none; }
+        .login-card { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 360px; box-sizing: border-box; }
+        
+        .tab-header { display: flex; margin-bottom: 1.5rem; border-bottom: 2px solid #eee; }
+        .tab-btn { flex: 1; text-align: center; padding: 10px 0; cursor: pointer; color: #888; font-weight: 600; transition: all 0.2s; }
+        .tab-btn.active { color: #7300ff; border-bottom: 2px solid #7300ff; margin-bottom: -2px; }
+        
+        input { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 14px; outline: none; transition: border-color 0.2s; }
+        input:focus { border-color: #7300ff; }
+        
+        button { width: 100%; padding: 12px; background: #7300ff; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 15px; font-weight: bold; margin-top: 12px; transition: background 0.2s; }
+        button:hover { background: #5c00cc; }
+        
+        .error { color: #d93025; font-size: 13px; display: none; background: #fce8e6; padding: 10px; border-radius: 6px; border: 1px solid #fad2cf; text-align: center; margin: 10px 0; font-weight: 500; }
+        
+        .signup-only { display: none; }
     </style>
 </head>
 <body>
     <div class="login-card">
-        <h2>Вхід у систему</h2>
-        <input type="text" id="username" placeholder="Логін">
-        <input type="password" id="password" placeholder="Пароль">
-        <p id="error-msg" style="color: red; display: none;" class="error">Невірний логін або пароль</p>
-        <button id="loginBtn">Увійти</button>
+        <div class="tab-header">
+            <div id="loginTab" class="tab-btn active">Login</div>
+            <div id="signupTab" class="tab-btn">Sign Up</div>
+        </div>
+
+        <h3 id="formTitle" style="margin: 0 0 1rem 0; color: #333; font-weight: 600;">Вхід у систему</h3>
+        
+        <input type="email" id="email" placeholder="Email" required>
+        
+        <div id="signUpFields" class="signup-only">
+            <input type="text" id="firstName" placeholder="Ім'я">
+            <input type="text" id="lastName" placeholder="Прізвище">
+        </div>
+
+        <input type="password" id="password" placeholder="Пароль" required>
+        
+        <p id="error-msg" class="error"></p>
+        
+        <button id="submitBtn">Увійти</button>
     </div>
 
 <script type="module">
     import { userApi } from '../js/api/userApi.js';
 
     window.addEventListener('DOMContentLoaded', () => {
-        const loginBtn = document.getElementById('loginBtn');
+        const loginTab = document.getElementById('loginTab');
+        const signupTab = document.getElementById('signupTab');
+        const signUpFields = document.getElementById('signUpFields');
+        const formTitle = document.getElementById('formTitle');
+        const submitBtn = document.getElementById('submitBtn');
+        const errorMsg = document.getElementById('error-msg');
         
-        if (loginBtn) {
-            loginBtn.addEventListener('click', async () => {
-                const username = document.getElementById('username').value;
-                const errorMsg = document.getElementById('error-msg');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const firstNameInput = document.getElementById('firstName');
+        const lastNameInput = document.getElementById('lastName');
 
-                try {
-                    console.log("Спроба входу для:", username);
-                    const users = await userApi.getAll();
-                    const user = users.find(u => u.username === username);
+        let isLoginMode = true; 
 
-                    if (user) {
-                        localStorage.setItem('userId', user.id);
-                        localStorage.setItem('userName', user.username);
-                        localStorage.setItem('userRole', user.role);
-                        
-                        alert("Вхід успішний!");
-                        window.location.href = 'lobby.html';
-                    } else {
-                        errorMsg.style.display = 'block';
+        loginTab.addEventListener('click', () => {
+            isLoginMode = true;
+            loginTab.classList.add('active');
+            signupTab.classList.remove('active');
+            signUpFields.style.display = 'none';
+            formTitle.innerText = 'Вхід у систему';
+            submitBtn.innerText = 'Увійти';
+            errorMsg.style.display = 'none';
+        });
+
+        signupTab.addEventListener('click', () => {
+            isLoginMode = false;
+            signupTab.classList.add('active');
+            loginTab.classList.remove('active');
+            signUpFields.style.display = 'block';
+            formTitle.innerText = 'Реєстрація акаунту';
+            submitBtn.innerText = 'Зареєструватися та увійти';
+            errorMsg.style.display = 'none';
+        });
+
+        submitBtn.addEventListener('click', async () => {
+            errorMsg.style.display = 'none';
+            const email = emailInput.value.trim();
+            const password = passwordInput.value;
+
+            if (!email || !password) {
+                showError("Будь ласка, введіть Email та пароль.");
+                return;
+            }
+
+            try {
+                let sessionData;
+
+                if (isLoginMode) {
+                    sessionData = await userApi.login(email, password);
+                } else {
+                    const firstName = firstNameInput.value.trim();
+                    const lastName = lastNameInput.value.trim();
+
+                    if (!firstName || !lastName) {
+                        showError("Будь ласка, введіть ваше Ім'я та Прізвище.");
+                        return;
                     }
-                } catch (err) {
-                    console.error("Помилка:", err);
-                    alert("Сервер не відповідає. Перевір Backend!");
+
+                    sessionData = await userApi.register(email, password, firstName, lastName);
                 }
-            });
+
+                const nameToStore = sessionData.firstName || sessionData.FirstName || 'User';
+
+                localStorage.setItem('userId', sessionData.id || sessionData.Id);
+                localStorage.setItem('userName', nameToStore);
+                
+                window.location.href = 'lobby.html';
+
+            } catch (err) {
+                showError(err.message);
+            }
+        });
+
+        function showError(message) {
+            errorMsg.innerText = message;
+            errorMsg.style.display = 'block';
         }
     });
 </script>
