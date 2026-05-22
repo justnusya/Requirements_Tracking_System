@@ -22,6 +22,21 @@
         .header-filter-btn { font-size: 24px; cursor: pointer; background: none; border: none; padding: 5px 10px; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
         .header-filter-btn img { width: 24px; height: auto; filter: brightness(0) opacity(0.6); transition: all 0.3s ease; }
         .header-filter-btn:hover img { filter: brightness(0) opacity(0.3); transform: scale(1.1); }
+
+        .custom-scroll-container {
+            width: 100%;
+            max-height: 120px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 8px;
+            background: #fff;
+            box-sizing: border-box;
+            margin-top: 5px;
+            margin-bottom: 12px;
+        }
+        .dependency-item { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 14px; cursor: pointer; }
+        .dependency-item input { width: auto !important; margin: 0 !important; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -109,6 +124,12 @@
             <textarea id="reqDescription" style="width:100%; margin: 10px 0;" rows="3"></textarea>
             <label>Проєкт:</label>
             <select id="reqProject" style="width:100%; margin: 10px 0; padding: 5px;" required></select>
+            
+            <label>Залежить від вимог (опціонально):</label>
+            <div id="dependenciesContainer" class="custom-scroll-container">
+                <div style="color: #999; font-size: 13px; padding: 5px;">Оберіть проєкт...</div>
+            </div>
+
             <label>Пріоритет:</label>
             <select id="reqPriority" style="width:100%; margin: 10px 0;">
                 <option value="Low">Низький</option>
@@ -186,11 +207,34 @@
     const modalTitle = document.getElementById('modalReqTitle');
     const body = document.getElementById('requirementsBody');
     const rowsSelect = document.getElementById('rowsPerPageSelect');
+    const projectSelect = document.getElementById('reqProject');
+    const dependenciesContainer = document.getElementById('dependenciesContainer');
 
     document.getElementById('currentUserName').innerText = localStorage.getItem('userName') || 'Гість';
 
     window.logout = () => { localStorage.clear(); window.location.href = 'login.html'; };
     rowsSelect.addEventListener('change', (e) => { rowsPerPage = parseInt(e.target.value); currentPage = 1; renderRequirements(); });
+
+    function renderDependenciesList(projectId, currentReqId = null, checkedIds = []) {
+        const numericCheckedIds = checkedIds.map(id => parseInt(id));
+        const projectRequirements = allRequirements.filter(r => r.projectId === parseInt(projectId) && r.id !== parseInt(currentReqId));
+        
+        if (projectRequirements.length === 0) {
+            dependenciesContainer.innerHTML = '<div style="color: #999; font-size: 13px; padding: 5px;">Немає інших вимог у цьому проєкті.</div>';
+            return;
+        }
+        
+        dependenciesContainer.innerHTML = projectRequirements.map(r => `
+            <label class="dependency-item">
+                <input type="checkbox" name="reqDependency" value="${r.id}" ${numericCheckedIds.includes(parseInt(r.id)) ? 'checked' : ''}>
+                <span>#${r.id} - ${r.title}</span>
+            </label>
+        `).join('');
+    }
+
+    projectSelect.addEventListener('change', (e) => {
+        renderDependenciesList(e.target.value, currentEditId, []);
+    });
 
     window.toggleFilterPanel = () => {
         const panel = document.getElementById('filterPanel');
@@ -246,7 +290,18 @@
     };
 
     async function loadRequirements() {
-        try { allRequirements = await requirementApi.getAll(); filteredRequirements = [...allRequirements]; renderRequirements(); } catch (err) { console.error(err); }
+        try { 
+            const rawData = await requirementApi.getAll(); 
+            
+            allRequirements = rawData.sort((a, b) => {
+                const nameA = (a.project && a.project.projectName) ? a.project.projectName.toLowerCase() : '';
+                const nameB = (b.project && b.project.projectName) ? b.project.projectName.toLowerCase() : '';
+                return nameA.localeCompare(nameB);
+            });
+            
+            filteredRequirements = [...allRequirements]; 
+            renderRequirements(); 
+        } catch (err) { console.error(err); }
     }
 
     function renderRequirements() {
@@ -322,16 +377,46 @@
             editMode = true;
             currentEditId = id;
             currentCreatedAt = req.createdAt;
+
+            const checkedIds = req.dependentRequirementIds || [];
+            renderDependenciesList(req.projectId, id, checkedIds);
+
             modal.style.display = "block";
-        } catch (err) { alert("Помилка завантаження"); }
+        } catch (err) { 
+            console.error(err);
+            alert("Помилка завантаження"); 
+        }
     };
 
-    document.getElementById('openModalBtn').onclick = () => { editMode = false; currentEditId = null; modalTitle.innerText = "Нова вимога"; document.getElementById('addRequirementForm').reset(); modal.style.display = "block"; };
+    document.getElementById('openModalBtn').onclick = () => { 
+        editMode = false; 
+        currentEditId = null; 
+        modalTitle.innerText = "Нова вимога"; 
+        document.getElementById('addRequirementForm').reset(); 
+        dependenciesContainer.innerHTML = '<div style="color: #999; font-size: 13px; padding: 5px;">Оберіть проєкт...</div>';
+        modal.style.display = "block"; 
+    };
     document.getElementById('closeModalBtn').onclick = () => modal.style.display = "none";
     
     document.getElementById('addRequirementForm').onsubmit = async (e) => {
         e.preventDefault();
-        const data = { Id: editMode ? parseInt(currentEditId) : 0, Title: document.getElementById('reqTitle').value, Description: document.getElementById('reqDescription').value, PriorityId: document.getElementById('reqPriority').value === "High" ? 3 : document.getElementById('reqPriority').value === "Medium" ? 2 : 1, StatusId: parseInt(document.getElementById('reqStatus').value), ProjectId: parseInt(document.getElementById('reqProject').value), AuthorId: parseInt(localStorage.getItem('userId')), CreatedAt: editMode ? currentCreatedAt : new Date().toISOString(), UpdatedAt: new Date().toISOString() };
+
+        const checkedBoxes = document.querySelectorAll('input[name="reqDependency"]:checked');
+        const dependentIds = Array.from(checkedBoxes).map(cb => parseInt(cb.value));
+
+        const data = { 
+            Id: editMode ? parseInt(currentEditId) : 0, 
+            Title: document.getElementById('reqTitle').value, 
+            Description: document.getElementById('reqDescription').value, 
+            PriorityId: document.getElementById('reqPriority').value === "High" ? 3 : document.getElementById('reqPriority').value === "Medium" ? 2 : 1, 
+            StatusId: parseInt(document.getElementById('reqStatus').value), 
+            ProjectId: parseInt(document.getElementById('reqProject').value), 
+            AuthorId: parseInt(localStorage.getItem('userId')), 
+            EstimatedHours: 0,
+            CreatedAt: editMode ? currentCreatedAt : new Date().toISOString(), 
+            UpdatedAt: new Date().toISOString(),
+            dependentRequirementIds: dependentIds 
+        };
         try {
             if (editMode) await requirementApi.update(currentEditId, data);
             else await requirementApi.create(data);

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
 
 namespace Backend.Models;
@@ -35,4 +36,7 @@ public partial class Requirement
 
     [JsonIgnore]
     public virtual RequirementPriority? Priority { get; set; }
+    
+    [NotMapped]
+    public List<int> DependentRequirementIds { get; set; } = new List<int>();
 }

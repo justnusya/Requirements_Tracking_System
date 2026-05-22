@@ -3,6 +3,10 @@ using Backend.Services;
 using Backend.Data;
 using Backend.Models;
 using Microsoft.EntityFrameworkCore;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using System.Linq;
+using System;
 
 namespace Backend.Controllers
 {
@@ -29,10 +33,14 @@ namespace Backend.Controllers
         public async Task<ActionResult<Requirement>> GetRequirement(int id)
         {
             var requirement = await _context.Requirements
-            .Include(r => r.Project)
-            .FirstOrDefaultAsync(r => r.Id == id);
+                .Include(r => r.Project)
+                .FirstOrDefaultAsync(r => r.Id == id);
 
             if (requirement == null) return NotFound();
+
+            var dependentIds = await _service.GetDependentIdsAsync(id);
+            requirement.DependentRequirementIds = dependentIds.ToList();
+
             return requirement;
         }
 
@@ -48,8 +56,8 @@ namespace Backend.Controllers
 
             try
             {
-                _context.Requirements.Add(req);
-                await _context.SaveChangesAsync();
+                var success = await _service.CreateRequirementAsync(req);
+                if (!success) return BadRequest("Не вдалося створити вимогу.");
                 return Ok(req);
             }
             catch (Exception ex)
@@ -71,17 +79,11 @@ namespace Backend.Controllers
 
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
-            _context.Entry(req).State = EntityState.Modified;
-
             try
             {
-                await _context.SaveChangesAsync();
+                var success = await _service.UpdateRequirementAsync(id, req);
+                if (!success) return NotFound();
                 return NoContent(); 
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!_context.Requirements.Any(e => e.Id == id)) return NotFound();
-                else throw;
             }
             catch (Exception ex)
             {
@@ -93,11 +95,8 @@ namespace Backend.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteRequirement(int id)
         {
-            var req = await _context.Requirements.FindAsync(id);
-            if (req == null) return NotFound();
-
-            _context.Requirements.Remove(req);
-            await _context.SaveChangesAsync();
+            var success = await _service.DeleteRequirementAsync(id);
+            if (!success) return NotFound();
             return NoContent();
         }
 

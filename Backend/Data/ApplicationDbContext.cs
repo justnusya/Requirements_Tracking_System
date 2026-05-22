@@ -49,6 +49,9 @@ public class ApplicationDbContext : DbContext
             entity.ToTable("RequirementLinks");
             entity.HasKey(rl => new { rl.MainRequirementId, rl.DependentRequirementId });
 
+            entity.Property(rl => rl.DependentRequirementId)
+                  .HasColumnName("DependentId");
+
             entity.HasOne(rl => rl.MainRequirement)
                   .WithMany()
                   .HasForeignKey(rl => rl.MainRequirementId)
@@ -61,7 +64,7 @@ public class ApplicationDbContext : DbContext
         });
 
         modelBuilder.Entity<Project>(entity => 
-{
+        {
             entity.ToTable("Projects");
 
             entity.HasOne(p => p.Client)
