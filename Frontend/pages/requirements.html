@@ -35,8 +35,25 @@
             margin-top: 5px;
             margin-bottom: 12px;
         }
-        .dependency-item { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 14px; cursor: pointer; }
+        .dependency-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 5px 0;
+            border-bottom: 1px dashed #eee;
+        }
+        .dependency-item { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; flex: 1; }
         .dependency-item input { width: auto !important; margin: 0 !important; cursor: pointer; }
+        .dependency-type-select {
+            padding: 3px 6px;
+            font-size: 12px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            outline: none;
+            background: #fafafa;
+            max-width: 130px;
+        }
     </style>
 </head>
 <body>
@@ -195,6 +212,7 @@
     import { projectApi } from '../js/api/projectApi.js';
     let allRequirements = [];
     let filteredRequirements = [];
+    let dependencyTypes = [];
     let selectedId = null;
     let editMode = false;
     let currentEditId = null;
@@ -216,21 +234,50 @@
     rowsSelect.addEventListener('change', (e) => { rowsPerPage = parseInt(e.target.value); currentPage = 1; renderRequirements(); });
 
     function renderDependenciesList(projectId, currentReqId = null, checkedIds = []) {
-        const numericCheckedIds = checkedIds.map(id => parseInt(id));
-        const projectRequirements = allRequirements.filter(r => r.projectId === parseInt(projectId) && r.id !== parseInt(currentReqId));
-        
-        if (projectRequirements.length === 0) {
-            dependenciesContainer.innerHTML = '<div style="color: #999; font-size: 13px; padding: 5px;">Немає інших вимог у цьому проєкті.</div>';
-            return;
-        }
-        
-        dependenciesContainer.innerHTML = projectRequirements.map(r => `
-            <label class="dependency-item">
-                <input type="checkbox" name="reqDependency" value="${r.id}" ${numericCheckedIds.includes(parseInt(r.id)) ? 'checked' : ''}>
-                <span>#${r.id} - ${r.title}</span>
-            </label>
-        `).join('');
+    const projectRequirements = allRequirements.filter(r => r.projectId === parseInt(projectId) && r.id !== parseInt(currentReqId));
+    
+    if (projectRequirements.length === 0) {
+        dependenciesContainer.innerHTML = '<div style="color: #999; font-size: 13px; padding: 5px;">Немає інших вимог у цьому проєкті.</div>';
+        return;
     }
+
+    const activeTypes = (dependencyTypes && dependencyTypes.length > 0) 
+        ? dependencyTypes 
+        : [{ id: 1, name: 'Blocks' }, { id: 2, name: 'Requires' }, { id: 3, name: 'Relies On' }];
+
+    dependenciesContainer.innerHTML = projectRequirements.map(r => {
+        const isChecked = checkedIds.some(item => {
+            if (typeof item === 'object' && item !== null) {
+                const depReqId = item.requirementId ?? item.RequirementId;
+                return parseInt(depReqId) === r.id;
+            }
+            return parseInt(item) === r.id;
+        }) ? 'checked' : '';
+
+        const foundObject = checkedIds.find(item => {
+            if (typeof item === 'object' && item !== null) {
+                const depReqId = item.requirementId ?? item.RequirementId;
+                return parseInt(depReqId) === r.id;
+            }
+            return false;
+        });
+
+        const savedTypeId = foundObject ? (foundObject.typeId ?? foundObject.TypeId) : null;
+        const activeTypeId = savedTypeId ? parseInt(savedTypeId) : (activeTypes[0]?.id || 1);
+
+        return `
+            <div class="dependency-row" data-id="${r.id}">
+                <label class="dependency-item">
+                    <input type="checkbox" name="reqDependency" value="${r.id}" ${isChecked} onchange="this.parentElement.parentElement.querySelector('select').disabled = !this.checked">
+                    <span>#${r.id} - ${r.title}</span>
+                </label>
+                <select class="dependency-type-select" ${isChecked ? '' : 'disabled'}>
+                    ${activeTypes.map(t => `<option value="${t.id}" ${t.id === activeTypeId ? 'selected' : ''}>${t.name}</option>`).join('')}
+                </select>
+            </div>
+        `;
+    }).join('');
+}
 
     projectSelect.addEventListener('change', (e) => {
         renderDependenciesList(e.target.value, currentEditId, []);
@@ -292,13 +339,11 @@
     async function loadRequirements() {
         try { 
             const rawData = await requirementApi.getAll(); 
-            
             allRequirements = rawData.sort((a, b) => {
                 const nameA = (a.project && a.project.projectName) ? a.project.projectName.toLowerCase() : '';
                 const nameB = (b.project && b.project.projectName) ? b.project.projectName.toLowerCase() : '';
                 return nameA.localeCompare(nameB);
             });
-            
             filteredRequirements = [...allRequirements]; 
             renderRequirements(); 
         } catch (err) { console.error(err); }
@@ -362,47 +407,71 @@
             const options = projects.map(p => `<option value="${p.id}">${p.projectName}</option>`).join('');
             modalSelect.innerHTML = '<option value="">Оберіть проєкт...</option>' + options;
             filterSelect.innerHTML = '<option value="all">Усі проєкти</option>' + options;
-        } catch (err) { console.error(err); }
+        } catch (err) { 
+            console.error("Помилка завантаження проєктів:", err); 
+        }
+
+        try {
+            const res = await fetch('http://localhost:5156/api/Requirements/dependency-types');
+            if (res.ok) {
+                dependencyTypes = await res.json();
+            }
+        } catch (err) { 
+            console.error("Помилка API при отриманні типів залежностей:", err); 
+        }
     }
 
     window.openEditModal = async (id) => {
-        try {
-            const req = await requirementApi.getById(id);
-            document.getElementById('reqTitle').value = req.title;
-            document.getElementById('reqDescription').value = req.description || '';
-            document.getElementById('reqProject').value = req.projectId;
-            document.getElementById('reqPriority').value = req.priorityId === 3 ? "High" : req.priorityId === 2 ? "Medium" : "Low";
-            document.getElementById('reqStatus').value = req.statusId.toString();
-            modalTitle.innerText = "Редагувати вимогу";
-            editMode = true;
-            currentEditId = id;
-            currentCreatedAt = req.createdAt;
+    try {
+        await loadResources();
 
-            const checkedIds = req.dependentRequirementIds || [];
-            renderDependenciesList(req.projectId, id, checkedIds);
+        const req = await requirementApi.getById(id);
+        document.getElementById('reqTitle').value = req.title;
+        document.getElementById('reqDescription').value = req.description || '';
+        document.getElementById('reqProject').value = req.projectId;
+        document.getElementById('reqPriority').value = req.priorityId === 3 ? "High" : req.priorityId === 2 ? "Medium" : "Low";
+        document.getElementById('reqStatus').value = req.statusId.toString();
+        modalTitle.innerText = "Редагувати вимогу";
+        editMode = true;
+        currentEditId = id;
+        currentCreatedAt = req.createdAt;
 
-            modal.style.display = "block";
-        } catch (err) { 
-            console.error(err);
-            alert("Помилка завантаження"); 
-        }
-    };
+        const savedDependencies = req.selectedDependencies || [];
+        renderDependenciesList(req.projectId, id, savedDependencies);
 
-    document.getElementById('openModalBtn').onclick = () => { 
+        modal.style.display = "block";
+    } catch (err) { 
+        console.error(err);
+        alert("Помилка завантаження"); 
+    }
+};
+
+    document.getElementById('openModalBtn').onclick = async () => { 
         editMode = false; 
         currentEditId = null; 
         modalTitle.innerText = "Нова вимога"; 
         document.getElementById('addRequirementForm').reset(); 
+        await loadResources(); 
         dependenciesContainer.innerHTML = '<div style="color: #999; font-size: 13px; padding: 5px;">Оберіть проєкт...</div>';
         modal.style.display = "block"; 
     };
+    
     document.getElementById('closeModalBtn').onclick = () => modal.style.display = "none";
     
     document.getElementById('addRequirementForm').onsubmit = async (e) => {
         e.preventDefault();
 
-        const checkedBoxes = document.querySelectorAll('input[name="reqDependency"]:checked');
-        const dependentIds = Array.from(checkedBoxes).map(cb => parseInt(cb.value));
+        const selectedDependencies = [];
+        const rows = dependenciesContainer.querySelectorAll('.dependency-row');
+        
+        rows.forEach(row => {
+            const checkbox = row.querySelector('input[type="checkbox"]');
+            if (checkbox && checkbox.checked) {
+                const reqId = parseInt(checkbox.value);
+                const typeId = parseInt(row.querySelector('select').value);
+                selectedDependencies.push({ requirementId: reqId, typeId: typeId });
+            }
+        });
 
         const data = { 
             Id: editMode ? parseInt(currentEditId) : 0, 
@@ -414,8 +483,7 @@
             AuthorId: parseInt(localStorage.getItem('userId')), 
             EstimatedHours: 0,
             CreatedAt: editMode ? currentCreatedAt : new Date().toISOString(), 
-            UpdatedAt: new Date().toISOString(),
-            dependentRequirementIds: dependentIds 
+            selectedDependencies: selectedDependencies 
         };
         try {
             if (editMode) await requirementApi.update(currentEditId, data);
@@ -426,8 +494,10 @@
     };
 
     window.onclick = (e) => { if (e.target == modal) modal.style.display = "none"; };
-    loadResources();
-    loadRequirements();
+    
+    loadResources().then(() => {
+        loadRequirements();
+    });
 </script>
 </body>
 </html>

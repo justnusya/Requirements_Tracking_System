@@ -26,7 +26,26 @@ namespace Backend.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Requirement>>> GetRequirements()
         {
-            return await _context.Requirements.Include(r => r.Project).ToListAsync();
+            try
+            {
+                var requirements = await _context.Requirements.Include(r => r.Project).ToListAsync();
+                var allLinks = await _context.RequirementLinks.ToListAsync();
+
+                foreach (var req in requirements)
+                {
+                    req.DependentRequirementIds = allLinks
+                        .Where(l => l.MainRequirementId == req.Id)
+                        .Select(l => l.DependentRequirementId)
+                        .ToList();
+                }
+
+                return Ok(requirements);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Помилка при отриманні списку вимог: " + ex.Message);
+                return StatusCode(500, ex.Message);
+            }
         }
 
         [HttpGet("{id}")]
@@ -38,8 +57,15 @@ namespace Backend.Controllers
 
             if (requirement == null) return NotFound();
 
-            var dependentIds = await _service.GetDependentIdsAsync(id);
-            requirement.DependentRequirementIds = dependentIds.ToList();
+            var links = await _context.RequirementLinks
+                .Where(rl => rl.MainRequirementId == id)
+                .ToListAsync();
+            requirement.DependentRequirementIds = links.Select(l => l.DependentRequirementId).ToList();
+            requirement.SelectedDependencies = links.Select(l => new SelectedDependencyDto
+            {
+                RequirementId = l.DependentRequirementId,
+                TypeId = l.DependencyType ?? 1 
+            }).ToList();
 
             return requirement;
         }

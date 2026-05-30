@@ -22,6 +22,7 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<Requirement>(entity =>
         {
             entity.ToTable("Requirements");
+            entity.HasKey(e => e.Id);
             
             entity.HasIndex(e => e.AuthorId, "IX_Requirements_AuthorId");
             entity.HasIndex(e => e.ProjectId, "IX_Requirements_ProjectId");
@@ -51,6 +52,9 @@ public class ApplicationDbContext : DbContext
 
             entity.Property(rl => rl.DependentRequirementId)
                   .HasColumnName("DependentId");
+
+            entity.Property(rl => rl.DependencyType)
+                  .HasColumnName("dependencytype");
 
             entity.HasOne(rl => rl.MainRequirement)
                   .WithMany()

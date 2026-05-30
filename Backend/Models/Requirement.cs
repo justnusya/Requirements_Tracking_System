@@ -24,8 +24,6 @@ public partial class Requirement
     public decimal EstimatedHours { get; set; }
 
     public DateTime CreatedAt { get; set; }
-
-    public DateTime UpdatedAt { get; set; }
     
     [JsonIgnore]
     public virtual User? Author { get; set; }
@@ -39,4 +37,11 @@ public partial class Requirement
     
     [NotMapped]
     public List<int> DependentRequirementIds { get; set; } = new List<int>();
+    [NotMapped]
+    public List<SelectedDependencyDto> SelectedDependencies { get; set; } = new List<SelectedDependencyDto>();
+}
+public class SelectedDependencyDto
+{
+    public int RequirementId { get; set; }
+    public int TypeId { get; set; }
 }

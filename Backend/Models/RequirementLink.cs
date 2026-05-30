@@ -9,7 +9,7 @@ public partial class RequirementLink
 
     public int DependentRequirementId { get; set; }
 
-    public string? DependencyType { get; set; }
+    public int? DependencyType { get; set; }
     public virtual Requirement MainRequirement { get; set; } = null!;
     public virtual Requirement DependentRequirement { get; set; } = null!;
 }

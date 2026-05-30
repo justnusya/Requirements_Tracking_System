@@ -1,10 +1,6 @@
 using Backend.Data;
 using Backend.Models;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace Backend.Services
 {
@@ -33,20 +29,19 @@ namespace Backend.Services
             try 
             {
                 req.CreatedAt = DateTime.UtcNow;
-                req.UpdatedAt = DateTime.UtcNow;
 
                 _context.Requirements.Add(req);
                 await _context.SaveChangesAsync(); 
 
-                if (req.DependentRequirementIds != null && req.DependentRequirementIds.Any())
+                if (req.SelectedDependencies != null && req.SelectedDependencies.Any())
                 {
-                    foreach (var depId in req.DependentRequirementIds)
+                    foreach (var dep in req.SelectedDependencies)
                     {
                         _context.RequirementLinks.Add(new RequirementLink
                         {
                             MainRequirementId = req.Id,
-                            DependentRequirementId = depId,
-                            DependencyType = "Requires"
+                            DependentRequirementId = dep.RequirementId,
+                            DependencyType = dep.TypeId
                         });
                     }
                     await _context.SaveChangesAsync();
@@ -75,7 +70,6 @@ namespace Backend.Services
                 existingReq.ProjectId = req.ProjectId;
                 existingReq.PriorityId = req.PriorityId;
                 existingReq.StatusId = req.StatusId;
-                existingReq.UpdatedAt = DateTime.UtcNow;
 
                 _context.Requirements.Update(existingReq);
 
@@ -83,15 +77,15 @@ namespace Backend.Services
                 _context.RequirementLinks.RemoveRange(oldLinks);
                 await _context.SaveChangesAsync();
 
-                if (req.DependentRequirementIds != null && req.DependentRequirementIds.Any())
+                if (req.SelectedDependencies != null && req.SelectedDependencies.Any())
                 {
-                    foreach (var depId in req.DependentRequirementIds)
+                    foreach (var dep in req.SelectedDependencies)
                     {
                         _context.RequirementLinks.Add(new RequirementLink
                         {
                             MainRequirementId = id,
-                            DependentRequirementId = depId,
-                            DependencyType = "Requires"
+                            DependentRequirementId = dep.RequirementId,
+                            DependencyType = dep.TypeId
                         });
                     }
                     await _context.SaveChangesAsync();
@@ -137,6 +131,13 @@ namespace Backend.Services
             return await _context.RequirementLinks
                 .Where(rl => rl.MainRequirementId == requirementId)
                 .Select(rl => rl.DependentRequirementId) 
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<RequirementLink>> GetRequirementLinksAsync(int requirementId)
+        {
+            return await _context.RequirementLinks
+                .Where(rl => rl.MainRequirementId == requirementId)
                 .ToListAsync();
         }
 
